@@ -1,3 +1,6 @@
+﻿## pdf files
+/pdfs/
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
