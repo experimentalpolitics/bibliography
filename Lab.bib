@@ -177,16 +177,25 @@ Comments:
 }
 
 @Article{hopkins2019muted,
-  author    = {Hopkins, Daniel J and Sides, John and Citrin, Jack},
-  title     = {The muted consequences of correct information about immigration},
-  journal   = {The Journal of Politics},
-  year      = {2019},
-  volume    = {81},
-  number    = {1},
-  pages     = {315--320},
-  file      = {:pdfs/hopkins2019muted.pdf:PDF},
-  groups    = {Immigration},
-  publisher = {University of Chicago Press Chicago, IL},
+  author        = {Hopkins, Daniel J and Sides, John and Citrin, Jack},
+  title         = {The muted consequences of correct information about immigration},
+  journal       = {The Journal of Politics},
+  year          = {2019},
+  volume        = {81},
+  number        = {1},
+  pages         = {315--320},
+  __markedentry = {[patrick:1]},
+  comment       = {overview:
+- seven original survey experiments (various US samples) that "randomly assign respondents to receive or not receive accurate information about the prevalence of immigrants before reporting attitudes about immigrants and immigration policy"
+- information corrects misperception (i.e., reduces estimated size of immigrant population) but only has little and inconsistent impact on attitudes about immigration
+- finding is not consistent with theories of power or intergroup threat (they argue it doesn't necessarily cast doubt on the theory itself, but rather suggests that there may be other cognitive mechanisms that explain why people perceive an out-group as threatening)
+- "Misperceptions about the size of minority groups may be a consequence, rather than a cause, of attitudes toward those groups." 
+
+comments/questions:
+- good literature review, check some of their citations/discussion of previous results!},
+  file          = {:pdfs/hopkins2019muted.pdf:PDF},
+  groups        = {Immigration},
+  publisher     = {University of Chicago Press Chicago, IL},
 }
 
 @Article{marbach2018long,
@@ -405,9 +414,25 @@ Comments:
   journal  = {Political Psychology},
   volume   = {forthcoming},
   abstract = {Even if people acknowledge that misinformation is incorrect after a correction has been presented, their feelings towards the source of the misinformation can remain unchanged. The current study investigated whether participants reduce their support of Republican and Democratic politicians when the prevalence of misinformation disseminated by the politicians appears to be high in comparison to the prevalence of their factual statements. We presented U.S. participants either with (1) equal numbers of false and factual statements from political candidates or (2) disproportionately more false than factual statements. Participants received fact-checks as to whether items were true or false, then rerated both their belief in the statements as well as their feelings towards the candidate. Results indicated that when corrected misinformation was presented alongside equal presentations of affirmed factual statements, participants reduced their belief in the misinformation but did not reduce their feelings towards the politician. However, if there was considerably more misinformation retracted than factual statements affirmed, feelings towards both Republican and Democratic figures were reduced—although the observed effect size was extremely small.},
+  comment  = {overview:
+- misinfo can be corrected, but attitudes don't change unless there is considerable more (fact-checked) misinformation than affirmed factual statements (even then effects are small) -> ratio of misinfo/factual matters
+- overall, there appears to be mostly symmetry in how supporters of Trump vs. Sanders react (e.g., both are not able to differentiate between factual statement and misinfo prior to receiving the fact-check, although it should be noted that the Sanders-misinfo is qualitatively different from Trump-misinfo). But: supporters of Trump believed significantly more in Trump misinformation than non-supporters, even after receiving corrective info.
+- corrective misinformation did not change participants' view of a politician's general veracity, they are bad at keeping a running tally of inaccuracies
+
+design:
+- experiment showing actual statements by Trump/Sanders (some factual, some misinfo), varied the ratio of factual vs. misinfo statements
+- atttitudes / beliefs measured pre and post fact-check
+- supporter/non-supporter distinction based on feeling-thermometer split
+- 2(ratio manipulation)x2(Trump/Sanders)x2(Supporter/non-supporter)x2(pre/post fact check) between-within design
+- sample: 1,500 MTurk respondents
+
+comments/questions:
+- shows useful examples of how to present corrective information for future experimental designs
+- analysis clearly done by psychologist, lots of ANOVAs with three-way interactions
+- Q: this study focuses on change in feeling towards source (i.e., the politician making false statement) rather than the change in feeling towards the target (i.e., the object the false statement is about, c.f., Hopkins 2019 JOP). Important difference?},
   doi      = {10.1111/pops.12586},
   eprint   = {https://onlinelibrary.wiley.com/doi/pdf/10.1111/pops.12586},
-  file     = {:pdfs/thompson2019might.pdf:PDF},
+  file     = {:pdfs/thompson2019might_published.pdf:PDF;:pdfs/thompson2019might.pdf:PDF},
   groups   = {Misinformation},
   keywords = {The continued influence effect, misinformation, belief updating, source credibility, fact checking},
   url      = {https://onlinelibrary.wiley.com/doi/abs/10.1111/pops.12586},
@@ -476,6 +501,102 @@ Comments:
   file      = {:pdfs/myers2013relationship.pdf:PDF},
   groups    = {Risk},
   publisher = {Nature Publishing Group},
+}
+
+@Article{guillory2013correcting,
+  author        = {Guillory, Jimmeka J and Geraci, Lisa},
+  title         = {Correcting erroneous inferences in memory: The role of source credibility},
+  journal       = {Journal of Applied Research in Memory and Cognition},
+  year          = {2013},
+  volume        = {2},
+  number        = {4},
+  pages         = {201--209},
+  __markedentry = {[patrick:1]},
+  file          = {:pdfs/guillory2013correcting.pdf:PDF},
+  groups        = {Misinformation},
+  publisher     = {Elsevier},
+}
+
+@Article{lewandowsky2012misinformation,
+  author        = {Lewandowsky, Stephan and Ecker, Ullrich KH and Seifert, Colleen M and Schwarz, Norbert and Cook, John},
+  title         = {Misinformation and its correction: Continued influence and successful debiasing},
+  journal       = {Psychological Science in the Public Interest},
+  year          = {2012},
+  volume        = {13},
+  number        = {3},
+  pages         = {106--131},
+  __markedentry = {[patrick:1]},
+  file          = {:pdfs/lewandowsky2012misinformation.pdf:PDF},
+  groups        = {Misinformation},
+  publisher     = {Sage Publications Sage CA: Los Angeles, CA},
+}
+
+@Article{ecker2019political,
+  author        = {Ecker, Ullrich KH and Ang, Li Chang},
+  title         = {Political attitudes and the processing of misinformation corrections},
+  journal       = {Political Psychology},
+  year          = {2019},
+  volume        = {40},
+  number        = {2},
+  pages         = {241--260},
+  __markedentry = {[patrick:1]},
+  file          = {:pdfs/ecker2019political.pdf:PDF},
+  groups        = {Misinformation},
+  publisher     = {Wiley Online Library},
+}
+
+@Article{berinsky2018telling,
+  author        = {Berinsky, Adam J},
+  title         = {Telling the truth about believing the lies? Evidence for the limited prevalence of expressive survey responding},
+  journal       = {The Journal of Politics},
+  year          = {2018},
+  volume        = {80},
+  number        = {1},
+  pages         = {211--224},
+  __markedentry = {[patrick:1]},
+  file          = {:pdfs/berinsky2018telling.pdf:PDF},
+  groups        = {Misinformation},
+  publisher     = {University of Chicago Press Chicago, IL},
+}
+
+@Article{benegal2018correcting,
+  author        = {Benegal, Salil D and Scruggs, Lyle A},
+  title         = {Correcting misinformation about climate change: the impact of partisanship in an experimental setting},
+  journal       = {Climatic change},
+  year          = {2018},
+  volume        = {148},
+  number        = {1-2},
+  pages         = {61--80},
+  __markedentry = {[patrick:1]},
+  file          = {:pdfs/benegal2018correcting.pdf:PDF},
+  groups        = {Misinformation},
+  publisher     = {Springer},
+}
+
+@Article{swire2018misinformation,
+  author        = {Swire, Briony and Ecker, UKH},
+  title         = {Misinformation and its correction: Cognitive mechanisms and recommendations for mass communication},
+  journal       = {Misinformation and mass audiences},
+  year          = {2018},
+  pages         = {195--211},
+  __markedentry = {[patrick:1]},
+  file          = {:pdfs/swire2018misinformation.pdf:PDF},
+  groups        = {Misinformation},
+  publisher     = {University of Texas Press Austin, TX},
+}
+
+@Article{schaffner2018misinformation,
+  author        = {Schaffner, Brian F and Luks, Samantha},
+  title         = {Misinformation or expressive responding? What an inauguration crowd can tell us about the source of political misinformation in surveys},
+  journal       = {Public Opinion Quarterly},
+  year          = {2018},
+  volume        = {82},
+  number        = {1},
+  pages         = {135--147},
+  __markedentry = {[patrick:1]},
+  file          = {:pdfs/schaffner2018misinformation.pdf:PDF},
+  groups        = {Misinformation},
+  publisher     = {Oxford University Press US},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}
