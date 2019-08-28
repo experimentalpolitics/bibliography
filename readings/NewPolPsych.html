@@ -1,0 +1,3374 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>JabRef references</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<script type="text/javascript">
+<!--
+// QuickSearch script for JabRef HTML export 
+// Version: 3.0
+//
+// Copyright (c) 2006-2011, Mark Schenk
+//
+// This software is distributed under a Creative Commons Attribution 3.0 License
+// http://creativecommons.org/licenses/by/3.0/
+//
+// Features:
+// - intuitive find-as-you-type searching
+//    ~ case insensitive
+//    ~ ignore diacritics (optional)
+//
+// - search with/without Regular Expressions
+// - match BibTeX key
+//
+
+// Search settings
+var searchAbstract = true;	// search in abstract
+var searchReview = true;	// search in review
+
+var noSquiggles = true; 	// ignore diacritics when searching
+var searchRegExp = false; 	// enable RegExp searches
+
+
+if (window.addEventListener) {
+	window.addEventListener("load",initSearch,false); }
+else if (window.attachEvent) {
+	window.attachEvent("onload", initSearch); }
+
+function initSearch() {
+	// check for quick search table and searchfield
+	if (!document.getElementById('qs_table')||!document.getElementById('quicksearch')) { return; }
+
+	// load all the rows and sort into arrays
+	loadTableData();
+	
+	//find the query field
+	qsfield = document.getElementById('qs_field');
+
+	// previous search term; used for speed optimisation
+	prevSearch = '';
+
+	//find statistics location
+	stats = document.getElementById('stat');
+	setStatistics(-1);
+	
+	// set up preferences
+	initPreferences();
+
+	// shows the searchfield
+	document.getElementById('quicksearch').style.display = 'block';
+	document.getElementById('qs_field').onkeyup = quickSearch;
+}
+
+function loadTableData() {
+	// find table and appropriate rows
+	searchTable = document.getElementById('qs_table');
+	var allRows = searchTable.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+	// split all rows into entryRows and infoRows (e.g. abstract, review, bibtex)
+	entryRows = new Array(); infoRows = new Array(); absRows = new Array(); revRows = new Array();
+
+	// get data from each row
+	entryRowsData = new Array(); absRowsData = new Array(); revRowsData = new Array(); 
+	
+	BibTeXKeys = new Array();
+	
+	for (var i=0, k=0, j=0; i<allRows.length;i++) {
+		if (allRows[i].className.match(/entry/)) {
+			entryRows[j] = allRows[i];
+			entryRowsData[j] = stripDiacritics(getTextContent(allRows[i]));
+			allRows[i].id ? BibTeXKeys[j] = allRows[i].id : allRows[i].id = 'autokey_'+j;
+			j ++;
+		} else {
+			infoRows[k++] = allRows[i];
+			// check for abstract/review
+			if (allRows[i].className.match(/abstract/)) {
+				absRows.push(allRows[i]);
+				absRowsData[j-1] = stripDiacritics(getTextContent(allRows[i]));
+			} else if (allRows[i].className.match(/review/)) {
+				revRows.push(allRows[i]);
+				revRowsData[j-1] = stripDiacritics(getTextContent(allRows[i]));
+			}
+		}
+	}
+	//number of entries and rows
+	numEntries = entryRows.length;
+	numInfo = infoRows.length;
+	numAbs = absRows.length;
+	numRev = revRows.length;
+}
+
+function quickSearch(){
+	
+	tInput = qsfield;
+
+	if (tInput.value.length == 0) {
+		showAll();
+		setStatistics(-1);
+		qsfield.className = '';
+		return;
+	} else {
+		t = stripDiacritics(tInput.value);
+
+		if(!searchRegExp) { t = escapeRegExp(t); }
+			
+		// only search for valid RegExp
+		try {
+			textRegExp = new RegExp(t,"i");
+			closeAllInfo();
+			qsfield.className = '';
+		}
+			catch(err) {
+			prevSearch = tInput.value;
+			qsfield.className = 'invalidsearch';
+			return;
+		}
+	}
+	
+	// count number of hits
+	var hits = 0;
+
+	// start looping through all entry rows
+	for (var i = 0; cRow = entryRows[i]; i++){
+
+		// only show search the cells if it isn't already hidden OR if the search term is getting shorter, then search all
+		if(cRow.className.indexOf('noshow')==-1 || tInput.value.length <= prevSearch.length){
+			var found = false; 
+
+			if (entryRowsData[i].search(textRegExp) != -1 || BibTeXKeys[i].search(textRegExp) != -1){ 
+				found = true;
+			} else {
+				if(searchAbstract && absRowsData[i]!=undefined) {
+					if (absRowsData[i].search(textRegExp) != -1){ found=true; } 
+				}
+				if(searchReview && revRowsData[i]!=undefined) {
+					if (revRowsData[i].search(textRegExp) != -1){ found=true; } 
+				}
+			}
+			
+			if (found){
+				cRow.className = 'entry show';
+				hits++;
+			} else {
+				cRow.className = 'entry noshow';
+			}
+		}
+	}
+
+	// update statistics
+	setStatistics(hits)
+	
+	// set previous search value
+	prevSearch = tInput.value;
+}
+
+
+// Strip Diacritics from text
+// http://stackoverflow.com/questions/990904/javascript-remove-accents-in-strings
+
+// String containing replacement characters for stripping accents 
+var stripstring = 
+    'AAAAAAACEEEEIIII'+
+    'DNOOOOO.OUUUUY..'+
+    'aaaaaaaceeeeiiii'+
+    'dnooooo.ouuuuy.y'+
+    'AaAaAaCcCcCcCcDd'+
+    'DdEeEeEeEeEeGgGg'+
+    'GgGgHhHhIiIiIiIi'+
+    'IiIiJjKkkLlLlLlL'+
+    'lJlNnNnNnnNnOoOo'+
+    'OoOoRrRrRrSsSsSs'+
+    'SsTtTtTtUuUuUuUu'+
+    'UuUuWwYyYZzZzZz.';
+
+function stripDiacritics(str){
+
+    if(noSquiggles==false){
+        return str;
+    }
+
+    var answer='';
+    for(var i=0;i<str.length;i++){
+        var ch=str[i];
+        var chindex=ch.charCodeAt(0)-192;   // Index of character code in the strip string
+        if(chindex>=0 && chindex<stripstring.length){
+            // Character is within our table, so we can strip the accent...
+            var outch=stripstring.charAt(chindex);
+            // ...unless it was shown as a '.'
+            if(outch!='.')ch=outch;
+        }
+        answer+=ch;
+    }
+    return answer;
+}
+
+// http://stackoverflow.com/questions/3446170/escape-string-for-use-in-javascript-regex
+// NOTE: must escape every \ in the export code because of the JabRef Export...
+function escapeRegExp(str) {
+  return str.replace(/[-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+}
+
+function toggleInfo(articleid,info) {
+
+	var entry = document.getElementById(articleid);
+	var abs = document.getElementById('abs_'+articleid);
+	var rev = document.getElementById('rev_'+articleid);
+	var bib = document.getElementById('bib_'+articleid);
+	
+	if (abs && info == 'abstract') {
+		abs.className.indexOf('noshow') == -1?abs.className = 'abstract noshow':abs.className = 'abstract show';
+	} else if (rev && info == 'review') {
+		rev.className.indexOf('noshow') == -1?rev.className = 'review noshow':rev.className = 'review show';
+	} else if (bib && info == 'bibtex') {
+		bib.className.indexOf('noshow') == -1?bib.className = 'bibtex noshow':bib.className = 'bibtex show';
+	} else { 
+		return;
+	}
+
+	// check if one or the other is available
+	var revshow; var absshow; var bibshow;
+	(abs && abs.className.indexOf('noshow') == -1)? absshow = true: absshow = false;
+	(rev && rev.className.indexOf('noshow') == -1)? revshow = true: revshow = false;	
+	(bib && bib.className.indexOf('noshow') == -1)? bibshow = true: bibshow = false;
+	
+	// highlight original entry
+	if(entry) {
+		if (revshow || absshow || bibshow) {
+		entry.className = 'entry highlight show';
+		} else {
+		entry.className = 'entry show';
+		}
+	}
+	
+	// When there's a combination of abstract/review/bibtex showing, need to add class for correct styling
+	if(absshow) {
+		(revshow||bibshow)?abs.className = 'abstract nextshow':abs.className = 'abstract';
+	} 
+	if (revshow) {
+		bibshow?rev.className = 'review nextshow': rev.className = 'review';
+	}	
+	
+}
+
+function setStatistics (hits) {
+	if(hits < 0) { hits=numEntries; }
+	if(stats) { stats.firstChild.data = hits + '/' + numEntries}
+}
+
+function getTextContent(node) {
+	// Function written by Arve Bersvendsen
+	// http://www.virtuelvis.com
+	
+	if (node.nodeType == 3) {
+	return node.nodeValue;
+	} // text node
+	if (node.nodeType == 1 && node.className != "infolinks") { // element node
+	var text = [];
+	for (var chld = node.firstChild;chld;chld=chld.nextSibling) {
+		text.push(getTextContent(chld));
+	}
+	return text.join("");
+	} return ""; // some other node, won't contain text nodes.
+}
+
+function showAll(){
+	closeAllInfo();
+	for (var i = 0; i < numEntries; i++){ entryRows[i].className = 'entry show'; }
+}
+
+function closeAllInfo(){
+	for (var i=0; i < numInfo; i++){
+		if (infoRows[i].className.indexOf('noshow') ==-1) {
+			infoRows[i].className = infoRows[i].className + ' noshow';
+		}
+	}
+}
+
+function clearQS() {
+	qsfield.value = '';
+	showAll();
+}
+
+function redoQS(){
+	showAll();
+	quickSearch(qsfield);
+}
+
+function updateSetting(obj){
+	var option = obj.id;
+	var checked = obj.value;
+
+	switch(option)
+	 {
+	 case "opt_searchAbs":
+	   searchAbstract=!searchAbstract;
+	   redoQS();
+	   break;
+	 case "opt_searchRev":
+	   searchReview=!searchReview;
+	   redoQS();
+	   break;
+	 case "opt_useRegExp":
+	   searchRegExp=!searchRegExp;
+	   redoQS();
+	   break;
+	 case "opt_noAccents":
+	   noSquiggles=!noSquiggles;
+	   loadTableData();
+	   redoQS();
+	   break;
+	 }
+}
+
+function initPreferences(){
+	if(searchAbstract){document.getElementById("opt_searchAbs").checked = true;}
+	if(searchReview){document.getElementById("opt_searchRev").checked = true;}
+	if(noSquiggles){document.getElementById("opt_noAccents").checked = true;}
+	if(searchRegExp){document.getElementById("opt_useRegExp").checked = true;}
+	
+	if(numAbs==0) {document.getElementById("opt_searchAbs").parentNode.style.display = 'none';}
+	if(numRev==0) {document.getElementById("opt_searchRev").parentNode.style.display = 'none';}
+}
+
+function toggleSettings(){
+	var togglebutton = document.getElementById('showsettings');
+	var settings = document.getElementById('settings');
+	
+	if(settings.className == "hidden"){
+		settings.className = "show";
+		togglebutton.innerText = "close settings";
+		togglebutton.textContent = "close settings";
+	}else{
+		settings.className = "hidden";
+		togglebutton.innerText = "settings...";		
+		togglebutton.textContent = "settings...";
+	}
+}
+
+-->
+</script>
+<style type="text/css">
+body { background-color: white; font-family: Arial, sans-serif; font-size: 13px; line-height: 1.2; padding: 1em; color: #2E2E2E; margin: auto 2em; }
+
+form#quicksearch { width: auto; border-style: solid; border-color: gray; border-width: 1px 0px; padding: 0.7em 0.5em; display:none; position:relative; }
+span#searchstat {padding-left: 1em;}
+
+div#settings { margin-top:0.7em; /* border-bottom: 1px transparent solid; background-color: #efefef; border: 1px grey solid; */ }
+div#settings ul {margin: 0; padding: 0; }
+div#settings li {margin: 0; padding: 0 1em 0 0; display: inline; list-style: none; }
+div#settings li + li { border-left: 2px #efefef solid; padding-left: 0.5em;}
+div#settings input { margin-bottom: 0px;}
+
+div#settings.hidden {display:none;}
+
+#showsettings { border: 1px grey solid; padding: 0 0.5em; float:right; line-height: 1.6em; text-align: right; }
+#showsettings:hover { cursor: pointer; }
+
+.invalidsearch { background-color: red; }
+input[type="button"] { background-color: #efefef; border: 1px #2E2E2E solid;}
+
+table { width: 100%; empty-cells: show; border-spacing: 0em 0.2em; margin: 1em 0em; border-style: none; }
+th, td { border: 1px gray solid; border-width: 1px 1px; padding: 0.5em; vertical-align: top; text-align: left; }
+th { background-color: #efefef; }
+td + td, th + th { border-left: none; }
+
+td a { color: navy; text-decoration: none; }
+td a:hover  { text-decoration: underline; }
+
+tr.noshow { display: none;}
+tr.highlight td { background-color: #EFEFEF; border-top: 2px #2E2E2E solid; font-weight: bold; }
+tr.abstract td, tr.review td, tr.bibtex td { background-color: #EFEFEF; text-align: justify; border-bottom: 2px #2E2E2E solid; }
+tr.nextshow td { border-bottom: 1px gray solid; }
+
+tr.bibtex pre { width: 100%; overflow: auto; white-space: pre-wrap;}
+p.infolinks { margin: 0.3em 0em 0em 0em; padding: 0px; }
+
+@media print {
+	p.infolinks, #qs_settings, #quicksearch, t.bibtex { display: none !important; }
+	tr { page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<form action="" id="quicksearch">
+<input type="text" id="qs_field" autocomplete="off" placeholder="Type to search..." /> <input type="button" onclick="clearQS()" value="clear" />
+<span id="searchstat">Matching entries: <span id="stat">0</span></span>
+<div id="showsettings" onclick="toggleSettings()">settings...</div>
+<div id="settings" class="hidden">
+<ul>
+<li><input type="checkbox" class="search_setting" id="opt_searchAbs" onchange="updateSetting(this)"><label for="opt_searchAbs"> include abstract</label></li>
+<li><input type="checkbox" class="search_setting" id="opt_searchRev" onchange="updateSetting(this)"><label for="opt_searchRev"> include review</label></li>
+<li><input type="checkbox" class="search_setting" id="opt_useRegExp" onchange="updateSetting(this)"><label for="opt_useRegExp"> use RegExp</label></li>
+<li><input type="checkbox" class="search_setting" id="opt_noAccents" onchange="updateSetting(this)"><label for="opt_noAccents"> ignore accents</label></li>
+</ul>
+</div>
+</form>
+<table id="qs_table" border="1">
+<thead><tr><th width="20%">Author</th><th width="30%">Title</th><th width="5%">Year</th><th width="30%">Journal/Proceedings</th><th width="10%">Reftype</th><th width="5%">DOI/URL</th></tr></thead>
+<tbody><tr id="abrajano2019campaigns" class="entry">
+	<td>Abrajano, M., Carlson, T.N., Bedolla, L.G., Oklobdzija, S. and Turney, S.</td>
+	<td>When campaigns call, who answers? Using observational data to enrich our understanding of phone mobilization <p class="infolinks">[<a href="javascript:toggleInfo('abrajano2019campaigns','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Electoral Studies&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_abrajano2019campaigns" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{abrajano2019campaigns,
+  author = {Abrajano, Marisa and Carlson, Taylor N and Bedolla, Lisa Garcia and Oklobdzija, Stan and Turney, Shad},
+  title = {When campaigns call, who answers? Using observational data to enrich our understanding of phone mobilization},
+  journal = {Electoral Studies},
+  publisher = {Elsevier},
+  year = {2019}
+}
+</pre></td>
+</tr>
+<tr id="boussalis2019communicating" class="entry">
+	<td>Boussalis, C., Coan, T.G. and Holman, M.R.</td>
+	<td>Communicating Climate Mitigation and Adaptation Efforts in American Cities <p class="infolinks">[<a href="javascript:toggleInfo('boussalis2019communicating','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Climate<br/>Vol. 7(3), pp. 45&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_boussalis2019communicating" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{boussalis2019communicating,
+  author = {Boussalis, Constantine and Coan, Travis G and Holman, Mirya R},
+  title = {Communicating Climate Mitigation and Adaptation Efforts in American Cities},
+  journal = {Climate},
+  publisher = {Multidisciplinary Digital Publishing Institute},
+  year = {2019},
+  volume = {7},
+  number = {3},
+  pages = {45}
+}
+</pre></td>
+</tr>
+<tr id="boydstun2019negativity" class="entry">
+	<td>Boydstun, A.E., Ledgerwood, A. and Sparks, J.</td>
+	<td>A negativity bias in reframing shapes political preferences even in partisan contexts <p class="infolinks">[<a href="javascript:toggleInfo('boydstun2019negativity','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Social Psychological and Personality Science<br/>Vol. 10(1), pp. 53-61&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_boydstun2019negativity" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{boydstun2019negativity,
+  author = {Boydstun, Amber E and Ledgerwood, Alison and Sparks, Jehan},
+  title = {A negativity bias in reframing shapes political preferences even in partisan contexts},
+  journal = {Social Psychological and Personality Science},
+  publisher = {SAGE Publications Sage CA: Los Angeles, CA},
+  year = {2019},
+  volume = {10},
+  number = {1},
+  pages = {53--61}
+}
+</pre></td>
+</tr>
+<tr id="carlson2019through" class="entry">
+	<td>Carlson, T.N.</td>
+	<td>Through the Grapevine: Informational Consequences of Interpersonal Political Communication <p class="infolinks">[<a href="javascript:toggleInfo('carlson2019through','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>American Political Science Review<br/>Vol. 113(2), pp. 325-339&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_carlson2019through" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{carlson2019through,
+  author = {Carlson, Taylor N},
+  title = {Through the Grapevine: Informational Consequences of Interpersonal Political Communication},
+  journal = {American Political Science Review},
+  publisher = {Cambridge University Press},
+  year = {2019},
+  volume = {113},
+  number = {2},
+  pages = {325--339}
+}
+</pre></td>
+</tr>
+<tr id="cassese2019partisan" class="entry">
+	<td>Cassese, E.C.</td>
+	<td>Partisan Dehumanization in American Politics <p class="infolinks">[<a href="javascript:toggleInfo('cassese2019partisan','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Political Behavior, pp. 1-22&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_cassese2019partisan" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{cassese2019partisan,
+  author = {Cassese, Erin C},
+  title = {Partisan Dehumanization in American Politics},
+  journal = {Political Behavior},
+  publisher = {Springer},
+  year = {2019},
+  pages = {1--22}
+}
+</pre></td>
+</tr>
+<tr id="cassese2019playing" class="entry">
+	<td>Cassese, E.C. and Holman, M.R.</td>
+	<td>Playing the woman card: Ambivalent sexism in the 2016 US presidential race <p class="infolinks">[<a href="javascript:toggleInfo('cassese2019playing','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Political Psychology<br/>Vol. 40(1), pp. 55-74&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_cassese2019playing" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{cassese2019playing,
+  author = {Cassese, Erin C and Holman, Mirya R},
+  title = {Playing the woman card: Ambivalent sexism in the 2016 US presidential race},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2019},
+  volume = {40},
+  number = {1},
+  pages = {55--74}
+}
+</pre></td>
+</tr>
+<tr id="connors2019transparency" class="entry">
+	<td>Connors, E.C., Krupnikov, Y. and Ryan, J.B.</td>
+	<td>How Transparency Affects Survey Responses <p class="infolinks">[<a href="javascript:toggleInfo('connors2019transparency','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Public Opinion Quarterly<br/>Vol. 83(S1), pp. 185-209&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_connors2019transparency" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{connors2019transparency,
+  author = {Connors, Elizabeth C and Krupnikov, Yanna and Ryan, John Barry},
+  title = {How Transparency Affects Survey Responses},
+  journal = {Public Opinion Quarterly},
+  publisher = {Oxford University Press UK},
+  year = {2019},
+  volume = {83},
+  number = {S1},
+  pages = {185--209}
+}
+</pre></td>
+</tr>
+<tr id="darr2019collision" class="entry">
+	<td>Darr, J.P., Kalmoe, N.P., Searles, K., Sui, M., Pingree, R.J., Watson, B.K., Bryanov, K. and Santia, M.</td>
+	<td>Collision with Collusion: Partisan Reaction to the Trump-Russia Scandal <p class="infolinks">[<a href="javascript:toggleInfo('darr2019collision','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Perspectives on Politics<br/>Vol. 17(3), pp. 772-787&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_darr2019collision" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{darr2019collision,
+  author = {Darr, Joshua P and Kalmoe, Nathan P and Searles, Kathleen and Sui, Mingxiao and Pingree, Raymond J and Watson, Brian K and Bryanov, Kirill and Santia, Martina},
+  title = {Collision with Collusion: Partisan Reaction to the Trump-Russia Scandal},
+  journal = {Perspectives on Politics},
+  publisher = {Cambridge University Press},
+  year = {2019},
+  volume = {17},
+  number = {3},
+  pages = {772--787}
+}
+</pre></td>
+</tr>
+<tr id="holman2019terrorism" class="entry">
+	<td>Holman, M.R., Merolla, J.L., Zechmeister, E.J. and Wang, D.</td>
+	<td>Terrorism, gender, and the 2016 US presidential election <p class="infolinks">[<a href="javascript:toggleInfo('holman2019terrorism','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Electoral Studies&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_holman2019terrorism" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{holman2019terrorism,
+  author = {Holman, Mirya R and Merolla, Jennifer L and Zechmeister, Elizabeth J and Wang, Ding},
+  title = {Terrorism, gender, and the 2016 US presidential election},
+  journal = {Electoral Studies},
+  publisher = {Elsevier},
+  year = {2019}
+}
+</pre></td>
+</tr>
+<tr id="kam2019infectious" class="entry">
+	<td>Kam, C.D.</td>
+	<td>Infectious Disease, Disgust, and Imagining the Other <p class="infolinks">[<a href="javascript:toggleInfo('kam2019infectious','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>The Journal of Politics<br/>Vol. 81(4), pp. 000-000&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_kam2019infectious" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{kam2019infectious,
+  author = {Kam, Cindy D},
+  title = {Infectious Disease, Disgust, and Imagining the Other},
+  journal = {The Journal of Politics},
+  publisher = {The University of Chicago Press Chicago, IL},
+  year = {2019},
+  volume = {81},
+  number = {4},
+  pages = {000--000}
+}
+</pre></td>
+</tr>
+<tr id="margolis2019wants" class="entry">
+	<td>Margolis, M.F.</td>
+	<td>Who Wants to Make America Great Again? Understanding Evangelical Support for Donald Trump <p class="infolinks">[<a href="javascript:toggleInfo('margolis2019wants','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Politics and Religion, pp. 1-30&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_margolis2019wants" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{margolis2019wants,
+  author = {Margolis, Michele F},
+  title = {Who Wants to Make America Great Again? Understanding Evangelical Support for Donald Trump},
+  journal = {Politics and Religion},
+  publisher = {Cambridge University Press},
+  year = {2019},
+  pages = {1--30}
+}
+</pre></td>
+</tr>
+<tr id="mcdermott2019psychological" class="entry">
+	<td>McDermott, R.</td>
+	<td>Psychological Underpinnings of Post-Truth in Political Beliefs <p class="infolinks">[<a href="javascript:toggleInfo('mcdermott2019psychological','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>PS: Political Science &amp; Politics<br/>Vol. 52(2), pp. 218-222&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_mcdermott2019psychological" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{mcdermott2019psychological,
+  author = {McDermott, Rose},
+  title = {Psychological Underpinnings of Post-Truth in Political Beliefs},
+  journal = {PS: Political Science &amp; Politics},
+  publisher = {Cambridge University Press},
+  year = {2019},
+  volume = {52},
+  number = {2},
+  pages = {218--222}
+}
+</pre></td>
+</tr>
+<tr id="rathbun2019moral" class="entry">
+	<td>Rathbun, B.C., Powers, K.E. and Anders, T.</td>
+	<td>Moral Hazard: German Public Opinion on the Greek Debt Crisis <p class="infolinks">[<a href="javascript:toggleInfo('rathbun2019moral','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Political Psychology<br/>Vol. 40(3), pp. 523-541&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_rathbun2019moral" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{rathbun2019moral,
+  author = {Rathbun, Brian C and Powers, Kathleen E and Anders, Therese},
+  title = {Moral Hazard: German Public Opinion on the Greek Debt Crisis},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2019},
+  volume = {40},
+  number = {3},
+  pages = {523--541}
+}
+</pre></td>
+</tr>
+<tr id="searles2019but" class="entry">
+	<td>Searles, K. and Banda, K.K.</td>
+	<td>But her emails! How journalistic preferences shaped election coverage in 2016 <p class="infolinks">[<a href="javascript:toggleInfo('searles2019but','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Journalism, pp. 1464884919845459&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_searles2019but" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{searles2019but,
+  author = {Searles, Kathleen and Banda, Kevin K},
+  title = {But her emails! How journalistic preferences shaped election coverage in 2016},
+  journal = {Journalism},
+  publisher = {SAGE Publications Sage UK: London, England},
+  year = {2019},
+  pages = {1464884919845459}
+}
+</pre></td>
+</tr>
+<tr id="settle2019opting" class="entry">
+	<td>Settle, J.E. and Carlson, T.N.</td>
+	<td>Opting out of political discussions <p class="infolinks">[<a href="javascript:toggleInfo('settle2019opting','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Political Communication, pp. 1-21&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_settle2019opting" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{settle2019opting,
+  author = {Settle, Jaime E and Carlson, Taylor N},
+  title = {Opting out of political discussions},
+  journal = {Political Communication},
+  publisher = {Taylor &amp; Francis},
+  year = {2019},
+  pages = {1--21}
+}
+</pre></td>
+</tr>
+<tr id="silber2019bad" class="entry">
+	<td>Silber Mohamed, H. and Farris, E.M.</td>
+	<td>‘Bad hombres’? An examination of identities in US media coverage of immigration <p class="infolinks">[<a href="javascript:toggleInfo('silber2019bad','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Journal of Ethnic and Migration Studies, pp. 1-19&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_silber2019bad" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{silber2019bad,
+  author = {Silber Mohamed, Heather and Farris, Emily M},
+  title = {‘Bad hombres’? An examination of identities in US media coverage of immigration},
+  journal = {Journal of Ethnic and Migration Studies},
+  publisher = {Taylor &amp; Francis},
+  year = {2019},
+  pages = {1--19}
+}
+</pre></td>
+</tr>
+<tr id="weber2019exploring" class="entry">
+	<td>Weber, C. and Klar, S.</td>
+	<td>Exploring the psychological foundations of ideological and social sorting <p class="infolinks">[<a href="javascript:toggleInfo('weber2019exploring','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Political Psychology<br/>Vol. 40, pp. 215-243&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_weber2019exploring" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{weber2019exploring,
+  author = {Weber, Christopher and Klar, Samara},
+  title = {Exploring the psychological foundations of ideological and social sorting},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2019},
+  volume = {40},
+  pages = {215--243}
+}
+</pre></td>
+</tr>
+<tr id="wolak2019descriptive" class="entry">
+	<td>Wolak, J.</td>
+	<td>Descriptive Representation and the Political Engagement of Women <p class="infolinks">[<a href="javascript:toggleInfo('wolak2019descriptive','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Politics &amp; Gender, pp. 1-24&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_wolak2019descriptive" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{wolak2019descriptive,
+  author = {Wolak, Jennifer},
+  title = {Descriptive Representation and the Political Engagement of Women},
+  journal = {Politics &amp; Gender},
+  publisher = {Cambridge University Press},
+  year = {2019},
+  pages = {1--24}
+}
+</pre></td>
+</tr>
+<tr id="wolak2019self" class="entry">
+	<td>Wolak, J. and Stapleton, C.E.</td>
+	<td>Self-Esteem and the Development of Partisan Identity <p class="infolinks">[<a href="javascript:toggleInfo('wolak2019self','bibtex')">BibTeX</a>]</p></td>
+	<td>2019</td>
+	<td>Political Research Quarterly, pp. 1065912919851556&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_wolak2019self" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{wolak2019self,
+  author = {Wolak, Jennifer and Stapleton, Carey E},
+  title = {Self-Esteem and the Development of Partisan Identity},
+  journal = {Political Research Quarterly},
+  publisher = {SAGE Publications Sage CA: Los Angeles, CA},
+  year = {2019},
+  pages = {1065912919851556}
+}
+</pre></td>
+</tr>
+<tr id="amazeen2018correcting" class="entry">
+	<td>Amazeen, M.A., Thorson, E., Muddiman, A. and Graves, L.</td>
+	<td>Correcting political and consumer misperceptions: The effectiveness and effects of rating scale versus contextual correction formats <p class="infolinks">[<a href="javascript:toggleInfo('amazeen2018correcting','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Journalism &amp; Mass Communication Quarterly<br/>Vol. 95(1), pp. 28-48&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_amazeen2018correcting" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{amazeen2018correcting,
+  author = {Amazeen, Michelle A and Thorson, Emily and Muddiman, Ashley and Graves, Lucas},
+  title = {Correcting political and consumer misperceptions: The effectiveness and effects of rating scale versus contextual correction formats},
+  journal = {Journalism &amp; Mass Communication Quarterly},
+  publisher = {SAGE Publications Sage CA: Los Angeles, CA},
+  year = {2018},
+  volume = {95},
+  number = {1},
+  pages = {28--48}
+}
+</pre></td>
+</tr>
+<tr id="anoll2018what" class="entry">
+	<td>Anoll, A.P.</td>
+	<td>What Makes a Good Neighbor? Race, Place, and Norms of Political Participation <p class="infolinks">[<a href="javascript:toggleInfo('anoll2018what','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>The American political science review.<br/>Vol. 112(3), pp. 494-508&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_anoll2018what" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{anoll2018what,
+  author = {Anoll, Allison P.},
+  title = {What Makes a Good Neighbor? Race, Place, and Norms of Political Participation},
+  journal = {The American political science review.},
+  publisher = {American Political Science Association},
+  year = {2018},
+  volume = {112},
+  number = {3},
+  pages = {494--508}
+}
+</pre></td>
+</tr>
+<tr id="anspach2018believe" class="entry">
+	<td>Anspach, N.M. and Carlson, T.N.</td>
+	<td>What to believe? Social media commentary and belief in misinformation <p class="infolinks">[<a href="javascript:toggleInfo('anspach2018believe','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Political Behavior, pp. 1-22&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_anspach2018believe" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{anspach2018believe,
+  author = {Anspach, Nicolas M and Carlson, Taylor N},
+  title = {What to believe? Social media commentary and belief in misinformation},
+  journal = {Political Behavior},
+  publisher = {Springer},
+  year = {2018},
+  pages = {1--22}
+}
+</pre></td>
+</tr>
+<tr id="bauer2018effects" class="entry">
+	<td>Bauer, N.M.</td>
+	<td>The Effects of Partisan Trespassing Strategies Across Candidate Sex <p class="infolinks">[<a href="javascript:toggleInfo('bauer2018effects','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Political Behavior, pp. 1-19&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_bauer2018effects" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{bauer2018effects,
+  author = {Bauer, Nichole M},
+  title = {The Effects of Partisan Trespassing Strategies Across Candidate Sex},
+  journal = {Political Behavior},
+  publisher = {Springer},
+  year = {2018},
+  pages = {1--19}
+}
+</pre></td>
+</tr>
+<tr id="bauer2018visual" class="entry">
+	<td>Bauer, N.M. and Carpinella, C.</td>
+	<td>Visual information and candidate evaluations: the influence of feminine and masculine images on support for female candidates <p class="infolinks">[<a href="javascript:toggleInfo('bauer2018visual','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Political Research Quarterly<br/>Vol. 71(2), pp. 395-407&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_bauer2018visual" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{bauer2018visual,
+  author = {Bauer, Nichole M and Carpinella, Colleen},
+  title = {Visual information and candidate evaluations: the influence of feminine and masculine images on support for female candidates},
+  journal = {Political Research Quarterly},
+  publisher = {SAGE Publications Sage CA: Los Angeles, CA},
+  year = {2018},
+  volume = {71},
+  number = {2},
+  pages = {395--407}
+}
+</pre></td>
+</tr>
+<tr id="boydstun2018assessing" class="entry">
+	<td>Boydstun, A.E., Highton, B. and Linn, S.</td>
+	<td>Assessing the Relationship between Economic News Coverage and Mass Economic Attitudes <p class="infolinks">[<a href="javascript:toggleInfo('boydstun2018assessing','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Political Research Quarterly<br/>Vol. 71(4), pp. 989-1000&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_boydstun2018assessing" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{boydstun2018assessing,
+  author = {Boydstun, Amber E and Highton, Benjamin and Linn, Suzanna},
+  title = {Assessing the Relationship between Economic News Coverage and Mass Economic Attitudes},
+  journal = {Political Research Quarterly},
+  publisher = {SAGE Publications Sage CA: Los Angeles, CA},
+  year = {2018},
+  volume = {71},
+  number = {4},
+  pages = {989--1000}
+}
+</pre></td>
+</tr>
+<tr id="boydstun2018new" class="entry">
+	<td>Boydstun, A.E. and Van Aelst, P.</td>
+	<td>New rules for an old game? How the 2016 US election caught the press off guard <p class="infolinks">[<a href="javascript:toggleInfo('boydstun2018new','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Mass Communication and Society<br/>Vol. 21(6), pp. 671-696&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_boydstun2018new" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{boydstun2018new,
+  author = {Boydstun, Amber E and Van Aelst, Peter},
+  title = {New rules for an old game? How the 2016 US election caught the press off guard},
+  journal = {Mass Communication and Society},
+  publisher = {Taylor &amp; Francis},
+  year = {2018},
+  volume = {21},
+  number = {6},
+  pages = {671--696}
+}
+</pre></td>
+</tr>
+<tr id="boydstun2018wake" class="entry">
+	<td>Boydstun, A.E., Feezell, J.T. and Glazier, R.A.</td>
+	<td>In the wake of a terrorist attack, do Americans’ attitudes toward Muslims decline? <p class="infolinks">[<a href="javascript:toggleInfo('boydstun2018wake','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Research &amp; Politics<br/>Vol. 5(4), pp. 2053168018806391&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_boydstun2018wake" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{boydstun2018wake,
+  author = {Boydstun, Amber E and Feezell, Jessica T and Glazier, Rebecca A},
+  title = {In the wake of a terrorist attack, do Americans’ attitudes toward Muslims decline?},
+  journal = {Research &amp; Politics},
+  publisher = {SAGE Publications Sage UK: London, England},
+  year = {2018},
+  volume = {5},
+  number = {4},
+  pages = {2053168018806391}
+}
+</pre></td>
+</tr>
+<tr id="carlson2018modeling" class="entry">
+	<td>Carlson, T.N.</td>
+	<td>Modeling political information transmission as a game of telephone <p class="infolinks">[<a href="javascript:toggleInfo('carlson2018modeling','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>The Journal of Politics<br/>Vol. 80(1), pp. 348-352&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_carlson2018modeling" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{carlson2018modeling,
+  author = {Carlson, Taylor N},
+  title = {Modeling political information transmission as a game of telephone},
+  journal = {The Journal of Politics},
+  publisher = {University of Chicago Press Chicago, IL},
+  year = {2018},
+  volume = {80},
+  number = {1},
+  pages = {348--352}
+}
+</pre></td>
+</tr>
+<tr id="cassese2018monster" class="entry">
+	<td>Cassese, E.C.</td>
+	<td>Monster metaphors in media coverage of the 2016 US presidential contest <p class="infolinks">[<a href="javascript:toggleInfo('cassese2018monster','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Politics, Groups, and Identities<br/>Vol. 6(4), pp. 825-837&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_cassese2018monster" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{cassese2018monster,
+  author = {Cassese, Erin C},
+  title = {Monster metaphors in media coverage of the 2016 US presidential contest},
+  journal = {Politics, Groups, and Identities},
+  publisher = {Taylor &amp; Francis},
+  year = {2018},
+  volume = {6},
+  number = {4},
+  pages = {825--837}
+}
+</pre></td>
+</tr>
+<tr id="cassese2018party" class="entry">
+	<td>Cassese, E.C. and Holman, M.R.</td>
+	<td>Party and gender stereotypes in campaign attacks <p class="infolinks">[<a href="javascript:toggleInfo('cassese2018party','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Political Behavior<br/>Vol. 40(3), pp. 785-807&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_cassese2018party" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{cassese2018party,
+  author = {Cassese, Erin C and Holman, Mirya R},
+  title = {Party and gender stereotypes in campaign attacks},
+  journal = {Political Behavior},
+  publisher = {Springer},
+  year = {2018},
+  volume = {40},
+  number = {3},
+  pages = {785--807}
+}
+</pre></td>
+</tr>
+<tr id="cassese2018reconciling" class="entry">
+	<td>Cassese, E.C. and Barnes, T.D.</td>
+	<td>Reconciling sexism and women’s support for republican candidates: A look at gender, class, and whiteness in the 2012 and 2016 presidential races <p class="infolinks">[<a href="javascript:toggleInfo('cassese2018reconciling','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Political Behavior, pp. 1-24&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_cassese2018reconciling" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{cassese2018reconciling,
+  author = {Cassese, Erin C and Barnes, Tiffany D},
+  title = {Reconciling sexism and women’s support for republican candidates: A look at gender, class, and whiteness in the 2012 and 2016 presidential races},
+  journal = {Political Behavior},
+  publisher = {Springer},
+  year = {2018},
+  pages = {1--24}
+}
+</pre></td>
+</tr>
+<tr id="clifford2018disgust" class="entry">
+	<td>Clifford, S. and Jerit, J.</td>
+	<td>Disgust, Anxiety, and Political Learning in the Face of Threat <p class="infolinks">[<a href="javascript:toggleInfo('clifford2018disgust','abstract')">Abstract</a>] [<a href="javascript:toggleInfo('clifford2018disgust','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>American Journal of Political Science<br/>Vol. (forthcoming), pp. https://doi.org/10.1111/ajps.12350&nbsp;</td>
+	<td>article</td>
+	<td><a href="https://doi.org/10.1111/ajps.12350">DOI</a> <a href="https://onlinelibrary.wiley.com/doi/abs/10.1111/ajps.12350">URL</a>&nbsp;</td>
+</tr>
+<tr id="abs_clifford2018disgust" class="abstract noshow">
+	<td colspan="6"><b>Abstract</b>: Abstract Emotions feature prominently in political rhetoric and media frames, and they have potent effects on how people process information. Yet, existing research has largely overlooked the influence of disgust, which is a basic emotion that leads people to avoid contamination threats. We illustrate how disgust may impede learning, as compared to the more commonly studied emotion of anxiety. Disgust and anxiety are natural reactions to many kinds of political threats, but the two emotions influence political engagement in different ways. This study investigated the distinctive effects of disgust in a series of experiments that manipulated information about the outbreak of an infectious disease. People who felt disgusted by a health threat were less likely to learn crucial facts about the threat and less likely to seek additional information. Thus, disgust has the counterintuitive effect of decreasing public engagement in precisely those situations where it is most critical.</td>
+</tr>
+<tr id="bib_clifford2018disgust" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{clifford2018disgust,
+  author = {Scott Clifford and Jennifer Jerit},
+  title = {Disgust, Anxiety, and Political Learning in the Face of Threat},
+  journal = {American Journal of Political Science},
+  year = {2018},
+  volume = {(forthcoming)},
+  pages = {https://doi.org/10.1111/ajps.12350},
+  url = {https://onlinelibrary.wiley.com/doi/abs/10.1111/ajps.12350},
+  doi = {https://doi.org/10.1111/ajps.12350}
+}
+</pre></td>
+</tr>
+<tr id="dunaway2018news" class="entry">
+	<td>Dunaway, J., Searles, K., Sui, M. and Paul, N.</td>
+	<td>News attention in a mobile era <p class="infolinks">[<a href="javascript:toggleInfo('dunaway2018news','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Journal of Computer-Mediated Communication<br/>Vol. 23(2), pp. 107-124&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_dunaway2018news" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{dunaway2018news,
+  author = {Dunaway, Johanna and Searles, Kathleen and Sui, Mingxiao and Paul, Newly},
+  title = {News attention in a mobile era},
+  journal = {Journal of Computer-Mediated Communication},
+  publisher = {Oxford University Press},
+  year = {2018},
+  volume = {23},
+  number = {2},
+  pages = {107--124}
+}
+</pre></td>
+</tr>
+<tr id="farris2018picturing" class="entry">
+	<td>Farris, E.M. and Silber Mohamed, H.</td>
+	<td>Picturing immigration: how the media criminalizes immigrants <p class="infolinks">[<a href="javascript:toggleInfo('farris2018picturing','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Politics, Groups, and Identities<br/>Vol. 6(4), pp. 814-824&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_farris2018picturing" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{farris2018picturing,
+  author = {Farris, Emily M and Silber Mohamed, Heather},
+  title = {Picturing immigration: how the media criminalizes immigrants},
+  journal = {Politics, Groups, and Identities},
+  publisher = {Taylor &amp; Francis},
+  year = {2018},
+  volume = {6},
+  number = {4},
+  pages = {814--824}
+}
+</pre></td>
+</tr>
+<tr id="flynn2018strategic" class="entry">
+	<td>Flynn, D. and Krupnikov, Y.</td>
+	<td>Strategic Misinformation: Why People Retain Some Errors But Quickly Dismiss Others <p class="infolinks">[<a href="javascript:toggleInfo('flynn2018strategic','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Journal of Experimental Political Science&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_flynn2018strategic" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{flynn2018strategic,
+  author = {Flynn, DJ and Krupnikov, Yanna},
+  title = {Strategic Misinformation: Why People Retain Some Errors But Quickly Dismiss Others},
+  journal = {Journal of Experimental Political Science},
+  year = {2018}
+}
+</pre></td>
+</tr>
+<tr id="garrett2018moral" class="entry">
+	<td>Garrett, K.N. and Bankert, A.</td>
+	<td>The Moral Roots of Partisan Division: How Moral Conviction Heightens Affective Polarization <p class="infolinks">[<a href="javascript:toggleInfo('garrett2018moral','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>British Journal of Political Science, pp. 1-20&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_garrett2018moral" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{garrett2018moral,
+  author = {Garrett, Kristin N and Bankert, Alexa},
+  title = {The Moral Roots of Partisan Division: How Moral Conviction Heightens Affective Polarization},
+  journal = {British Journal of Political Science},
+  publisher = {Cambridge University Press},
+  year = {2018},
+  pages = {1--20}
+}
+</pre></td>
+</tr>
+<tr id="greenlee2018helping" class="entry">
+	<td>Greenlee, J.S., Nteta, T.M., Rhodes, J.H. and Sharrow, E.A.</td>
+	<td>Helping to break the glass ceiling? Fathers, first daughters, and presidential vote choice in 2016 <p class="infolinks">[<a href="javascript:toggleInfo('greenlee2018helping','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Political Behavior, pp. 1-41&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_greenlee2018helping" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{greenlee2018helping,
+  author = {Greenlee, Jill S and Nteta, Tatishe M and Rhodes, Jesse H and Sharrow, Elizabeth A},
+  title = {Helping to break the glass ceiling? Fathers, first daughters, and presidential vote choice in 2016},
+  journal = {Political Behavior},
+  publisher = {Springer},
+  year = {2018},
+  pages = {1--41}
+}
+</pre></td>
+</tr>
+<tr id="hoewe2018coverage" class="entry">
+	<td>Hoewe, J.</td>
+	<td>Coverage of a Crisis: The Effects of International News Portrayals of Refugees and Misuse of the Term “Immigrant” <p class="infolinks">[<a href="javascript:toggleInfo('hoewe2018coverage','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>American behavioral scientist<br/>Vol. 62(4), pp. 478-492&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_hoewe2018coverage" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{hoewe2018coverage,
+  author = {Hoewe, Jennifer},
+  title = {Coverage of a Crisis: The Effects of International News Portrayals of Refugees and Misuse of the Term “Immigrant”},
+  journal = {American behavioral scientist},
+  publisher = {SAGE Publications Sage CA: Los Angeles, CA},
+  year = {2018},
+  volume = {62},
+  number = {4},
+  pages = {478--492}
+}
+</pre></td>
+</tr>
+<tr id="kalmoe2018crime" class="entry">
+	<td>Kalmoe, N.P., Pingree, R.J., Watson, B., Sui, M., Darr, J. and Searles, K.</td>
+	<td>Crime News Effects and Democratic Accountability: Experimental Evidence From Repeated Exposure in a Multiweek Online Panel <p class="infolinks">[<a href="javascript:toggleInfo('kalmoe2018crime','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>International Journal of Public Opinion Research&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_kalmoe2018crime" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{kalmoe2018crime,
+  author = {Kalmoe, Nathan P and Pingree, Raymond J and Watson, Brian and Sui, Mingxiao and Darr, Joshua and Searles, Kathleen},
+  title = {Crime News Effects and Democratic Accountability: Experimental Evidence From Repeated Exposure in a Multiweek Online Panel},
+  journal = {International Journal of Public Opinion Research},
+  year = {2018}
+}
+</pre></td>
+</tr>
+<tr id="klar2018affective" class="entry">
+	<td>Klar, S., Krupnikov, Y. and Ryan, J.B.</td>
+	<td>Affective polarization or partisan disdain? Untangling a dislike for the opposing party from a dislike of partisanship <p class="infolinks">[<a href="javascript:toggleInfo('klar2018affective','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Public Opinion Quarterly<br/>Vol. 82(2), pp. 379-390&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_klar2018affective" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{klar2018affective,
+  author = {Klar, Samara and Krupnikov, Yanna and Ryan, John Barry},
+  title = {Affective polarization or partisan disdain? Untangling a dislike for the opposing party from a dislike of partisanship},
+  journal = {Public Opinion Quarterly},
+  publisher = {Oxford University Press US},
+  year = {2018},
+  volume = {82},
+  number = {2},
+  pages = {379--390}
+}
+</pre></td>
+</tr>
+<tr id="klar2018common" class="entry">
+	<td>Klar, S.</td>
+	<td>When common identities decrease trust: An experimental study of Partisan women <p class="infolinks">[<a href="javascript:toggleInfo('klar2018common','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>American Journal of Political Science<br/>Vol. 62(3), pp. 610-622&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_klar2018common" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{klar2018common,
+  author = {Klar, Samara},
+  title = {When common identities decrease trust: An experimental study of Partisan women},
+  journal = {American Journal of Political Science},
+  publisher = {Wiley Online Library},
+  year = {2018},
+  volume = {62},
+  number = {3},
+  pages = {610--622}
+}
+</pre></td>
+</tr>
+<tr id="margolis2018far" class="entry">
+	<td>Margolis, M.F.</td>
+	<td>How far does social group influence reach? Identities, elites, and immigration attitudes <p class="infolinks">[<a href="javascript:toggleInfo('margolis2018far','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>The Journal of Politics<br/>Vol. 80(3), pp. 772-785&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_margolis2018far" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{margolis2018far,
+  author = {Margolis, Michele F},
+  title = {How far does social group influence reach? Identities, elites, and immigration attitudes},
+  journal = {The Journal of Politics},
+  publisher = {University of Chicago Press Chicago, IL},
+  year = {2018},
+  volume = {80},
+  number = {3},
+  pages = {772--785}
+}
+</pre></td>
+</tr>
+<tr id="margolis2018politics" class="entry">
+	<td>Margolis, M.F.</td>
+	<td>How politics affects religion: Partisanship, socialization, and religiosity in America <p class="infolinks">[<a href="javascript:toggleInfo('margolis2018politics','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>The Journal of Politics<br/>Vol. 80(1), pp. 30-43&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_margolis2018politics" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{margolis2018politics,
+  author = {Margolis, Michele F},
+  title = {How politics affects religion: Partisanship, socialization, and religiosity in America},
+  journal = {The Journal of Politics},
+  publisher = {University of Chicago Press Chicago, IL},
+  year = {2018},
+  volume = {80},
+  number = {1},
+  pages = {30--43}
+}
+</pre></td>
+</tr>
+<tr id="mason2018ideologues" class="entry">
+	<td>Mason, L.</td>
+	<td>Ideologues without Issues: The Polarizing Consequences of Ideological Identities <p class="infolinks">[<a href="javascript:toggleInfo('mason2018ideologues','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Public Opinion Quarterly<br/>Vol. 82(S1), pp. 866-887&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_mason2018ideologues" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{mason2018ideologues,
+  author = {Mason, Lilliana},
+  title = {Ideologues without Issues: The Polarizing Consequences of Ideological Identities},
+  journal = {Public Opinion Quarterly},
+  publisher = {Public Opinion Quarterly Inc},
+  year = {2018},
+  volume = {82},
+  number = {S1},
+  pages = {866--887}
+}
+</pre></td>
+</tr>
+<tr id="mason2018one" class="entry">
+	<td>Mason, L. and Wronski, J.</td>
+	<td>One Tribe to Bind Them All: How Our Social Group Attachments Strengthen Partisanship <p class="infolinks">[<a href="javascript:toggleInfo('mason2018one','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Political psychology.<br/>Vol. 39, pp. 257-277&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_mason2018one" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{mason2018one,
+  author = {Mason, Lilliana and Wronski, Julie},
+  title = {One Tribe to Bind Them All: How Our Social Group Attachments Strengthen Partisanship},
+  journal = {Political psychology.},
+  publisher = {Transaction Periodicals Consortium},
+  year = {2018},
+  volume = {39},
+  pages = {257--277}
+}
+</pre></td>
+</tr>
+<tr id="mcdermott2018go" class="entry">
+	<td>McDermott, R. and Hatemi, P.K.</td>
+	<td>To Go Forward, We Must Look Back: The Importance of Evolutionary Psychology for Understanding Modern Politics <p class="infolinks">[<a href="javascript:toggleInfo('mcdermott2018go','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Evolutionary Psychology<br/>Vol. 16(2), pp. 1474704918764506&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_mcdermott2018go" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{mcdermott2018go,
+  author = {McDermott, Rose and Hatemi, Peter K},
+  title = {To Go Forward, We Must Look Back: The Importance of Evolutionary Psychology for Understanding Modern Politics},
+  journal = {Evolutionary Psychology},
+  publisher = {SAGE Publications Sage CA: Los Angeles, CA},
+  year = {2018},
+  volume = {16},
+  number = {2},
+  pages = {1474704918764506}
+}
+</pre></td>
+</tr>
+<tr id="pingree2018checking" class="entry">
+	<td>Pingree, R.J., Watson, B., Sui, M., Searles, K., Kalmoe, N.P., Darr, J.P., Santia, M. and Bryanov, K.</td>
+	<td>Checking facts and fighting back: Why journalists should defend their profession <p class="infolinks">[<a href="javascript:toggleInfo('pingree2018checking','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>PloS one<br/>Vol. 13(12), pp. e0208600&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_pingree2018checking" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{pingree2018checking,
+  author = {Pingree, Raymond J and Watson, Brian and Sui, Mingxiao and Searles, Kathleen and Kalmoe, Nathan P and Darr, Joshua P and Santia, Martina and Bryanov, Kirill},
+  title = {Checking facts and fighting back: Why journalists should defend their profession},
+  journal = {PloS one},
+  publisher = {Public Library of Science},
+  year = {2018},
+  volume = {13},
+  number = {12},
+  pages = {e0208600}
+}
+</pre></td>
+</tr>
+<tr id="piston2018clear" class="entry">
+	<td>Piston, S., Krupnikov, Y., Ryan, J.B. and Milita, K.</td>
+	<td>Clear as black and white: the effects of ambiguous rhetoric depend on candidate race <p class="infolinks">[<a href="javascript:toggleInfo('piston2018clear','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>The Journal of Politics<br/>Vol. 80(2), pp. 662-674&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_piston2018clear" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{piston2018clear,
+  author = {Piston, Spencer and Krupnikov, Yanna and Ryan, John Barry and Milita, Kerri},
+  title = {Clear as black and white: the effects of ambiguous rhetoric depend on candidate race},
+  journal = {The Journal of Politics},
+  publisher = {University of Chicago Press Chicago, IL},
+  year = {2018},
+  volume = {80},
+  number = {2},
+  pages = {662--674}
+}
+</pre></td>
+</tr>
+<tr id="searles2018partisan" class="entry">
+	<td>Searles, K., Smith, G. and Sui, M.</td>
+	<td>Partisan media, electoral predictions, and wishful thinking <p class="infolinks">[<a href="javascript:toggleInfo('searles2018partisan','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Public Opinion Quarterly<br/>Vol. 82(S1), pp. 888-910&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_searles2018partisan" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{searles2018partisan,
+  author = {Searles, Kathleen and Smith, Glen and Sui, Mingxiao},
+  title = {Partisan media, electoral predictions, and wishful thinking},
+  journal = {Public Opinion Quarterly},
+  publisher = {Oxford University Press US},
+  year = {2018},
+  volume = {82},
+  number = {S1},
+  pages = {888--910}
+}
+</pre></td>
+</tr>
+<tr id="sharrow2018first" class="entry">
+	<td>Sharrow, E.A., Rhodes, J.H., Nteta, T.M. and Greenlee, J.S.</td>
+	<td>The First-Daughter Effect: The Impact of Fathering Daughters on Men’s Preferences for Gender-Equality Policies <p class="infolinks">[<a href="javascript:toggleInfo('sharrow2018first','bibtex')">BibTeX</a>]</p></td>
+	<td>2018</td>
+	<td>Public Opinion Quarterly<br/>Vol. 82(3), pp. 493-523&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_sharrow2018first" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{sharrow2018first,
+  author = {Sharrow, Elizabeth A and Rhodes, Jesse H and Nteta, Tatishe M and Greenlee, Jill S},
+  title = {The First-Daughter Effect: The Impact of Fathering Daughters on Men’s Preferences for Gender-Equality Policies},
+  journal = {Public Opinion Quarterly},
+  publisher = {Oxford University Press US},
+  year = {2018},
+  volume = {82},
+  number = {3},
+  pages = {493--523}
+}
+</pre></td>
+</tr>
+<tr id="bauer2017effects" class="entry">
+	<td>Bauer, N.M.</td>
+	<td>The effects of counterstereotypic gender strategies on candidate evaluations <p class="infolinks">[<a href="javascript:toggleInfo('bauer2017effects','bibtex')">BibTeX</a>]</p></td>
+	<td>2017</td>
+	<td>Political Psychology<br/>Vol. 38(2), pp. 279-295&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_bauer2017effects" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{bauer2017effects,
+  author = {Bauer, Nichole M},
+  title = {The effects of counterstereotypic gender strategies on candidate evaluations},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2017},
+  volume = {38},
+  number = {2},
+  pages = {279--295}
+}
+</pre></td>
+</tr>
+<tr id="bauer2017punished" class="entry">
+	<td>Bauer, N.M., Yong, L.H. and Krupnikov, Y.</td>
+	<td>Who is punished? Conditions affecting voter evaluations of legislators who do not compromise <p class="infolinks">[<a href="javascript:toggleInfo('bauer2017punished','bibtex')">BibTeX</a>]</p></td>
+	<td>2017</td>
+	<td>Political Behavior<br/>Vol. 39(2), pp. 279-300&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_bauer2017punished" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{bauer2017punished,
+  author = {Bauer, Nichole M and Yong, Laurel Harbridge and Krupnikov, Yanna},
+  title = {Who is punished? Conditions affecting voter evaluations of legislators who do not compromise},
+  journal = {Political Behavior},
+  publisher = {Springer},
+  year = {2017},
+  volume = {39},
+  number = {2},
+  pages = {279--300}
+}
+</pre></td>
+</tr>
+<tr id="bond2017social" class="entry">
+	<td>Bond, R.M., Settle, J.E., Fariss, C.J., Jones, J.J. and Fowler, J.H.</td>
+	<td>Social endorsement cues and political participation <p class="infolinks">[<a href="javascript:toggleInfo('bond2017social','bibtex')">BibTeX</a>]</p></td>
+	<td>2017</td>
+	<td>Political Communication<br/>Vol. 34(2), pp. 261-281&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_bond2017social" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{bond2017social,
+  author = {Bond, Robert M and Settle, Jaime E and Fariss, Christopher J and Jones, Jason J and Fowler, James H},
+  title = {Social endorsement cues and political participation},
+  journal = {Political Communication},
+  publisher = {Taylor &amp; Francis},
+  year = {2017},
+  volume = {34},
+  number = {2},
+  pages = {261--281}
+}
+</pre></td>
+</tr>
+<tr id="hassell2017differential" class="entry">
+	<td>Hassell, H.J. and Settle, J.E.</td>
+	<td>The differential effects of stress on voter turnout <p class="infolinks">[<a href="javascript:toggleInfo('hassell2017differential','bibtex')">BibTeX</a>]</p></td>
+	<td>2017</td>
+	<td>Political Psychology<br/>Vol. 38(3), pp. 533-550&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_hassell2017differential" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{hassell2017differential,
+  author = {Hassell, Hans JG and Settle, Jaime E},
+  title = {The differential effects of stress on voter turnout},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2017},
+  volume = {38},
+  number = {3},
+  pages = {533--550}
+}
+</pre></td>
+</tr>
+<tr id="holman2017can" class="entry">
+	<td>Holman, M.R., Merolla, J.L. and Zechmeister, E.J.</td>
+	<td>Can experience overcome stereotypes in times of terror threat? <p class="infolinks">[<a href="javascript:toggleInfo('holman2017can','bibtex')">BibTeX</a>]</p></td>
+	<td>2017</td>
+	<td>Research &amp; Politics<br/>Vol. 4(1), pp. 2053168016688121&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_holman2017can" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{holman2017can,
+  author = {Holman, Mirya R and Merolla, Jennifer L and Zechmeister, Elizabeth J},
+  title = {Can experience overcome stereotypes in times of terror threat?},
+  journal = {Research &amp; Politics},
+  publisher = {SAGE Publications Sage UK: London, England},
+  year = {2017},
+  volume = {4},
+  number = {1},
+  pages = {2053168016688121}
+}
+</pre></td>
+</tr>
+<tr id="jerit2017revisiting" class="entry">
+	<td>Jerit, J. and Barabas, J.</td>
+	<td>Revisiting the Gender Gap in Political Knowledge <p class="infolinks">[<a href="javascript:toggleInfo('jerit2017revisiting','bibtex')">BibTeX</a>]</p></td>
+	<td>2017</td>
+	<td>Political Behavior<br/>Vol. 39(4), pp. 817-838&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_jerit2017revisiting" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{jerit2017revisiting,
+  author = {Jerit, Jennifer and Jason Barabas},
+  title = {Revisiting the Gender Gap in Political Knowledge},
+  journal = {Political Behavior},
+  year = {2017},
+  volume = {39},
+  number = {4},
+  pages = {817--838}
+}
+</pre></td>
+</tr>
+<tr id="klar2017effect" class="entry">
+	<td>Klar, S. and Shmargad, Y.</td>
+	<td>The effect of network structure on preference formation <p class="infolinks">[<a href="javascript:toggleInfo('klar2017effect','bibtex')">BibTeX</a>]</p></td>
+	<td>2017</td>
+	<td>The Journal of Politics<br/>Vol. 79(2), pp. 717-721&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_klar2017effect" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{klar2017effect,
+  author = {Klar, Samara and Shmargad, Yotam},
+  title = {The effect of network structure on preference formation},
+  journal = {The Journal of Politics},
+  publisher = {University of Chicago Press Chicago, IL},
+  year = {2017},
+  volume = {79},
+  number = {2},
+  pages = {717--721}
+}
+</pre></td>
+</tr>
+<tr id="krupnikov2017choice" class="entry">
+	<td>Krupnikov, Y. and Ryan, J.B.</td>
+	<td>Choice vs. Action: Voter Decision Making and Candidate Ambiguity <p class="infolinks">[<a href="javascript:toggleInfo('krupnikov2017choice','bibtex')">BibTeX</a>]</p></td>
+	<td>2017</td>
+	<td>Quarterly Journal of Political Science<br/>Vol. 12(4), pp. 479-505&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_krupnikov2017choice" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{krupnikov2017choice,
+  author = {Yanna Krupnikov and John Barry Ryan},
+  title = {Choice vs. Action: Voter Decision Making and Candidate Ambiguity},
+  journal = {Quarterly Journal of Political Science},
+  year = {2017},
+  volume = {12},
+  number = {4},
+  pages = {479--505}
+}
+</pre></td>
+</tr>
+<tr id="lawrence2017we" class="entry">
+	<td>Lawrence, R.G. and Boydstun, A.E.</td>
+	<td>What we should really be asking about media attention to Trump <p class="infolinks">[<a href="javascript:toggleInfo('lawrence2017we','bibtex')">BibTeX</a>]</p></td>
+	<td>2017</td>
+	<td>Political Communication<br/>Vol. 34(1), pp. 150-153&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_lawrence2017we" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{lawrence2017we,
+  author = {Lawrence, Regina G and Boydstun, Amber E},
+  title = {What we should really be asking about media attention to Trump},
+  journal = {Political Communication},
+  publisher = {Taylor &amp; Francis},
+  year = {2017},
+  volume = {34},
+  number = {1},
+  pages = {150--153}
+}
+</pre></td>
+</tr>
+<tr id="settle2017negative" class="entry">
+	<td>Settle, J.E., Dawes, C.T., Loewen, P.J. and Panagopoulos, C.</td>
+	<td>Negative affectivity, political contention, and turnout: A genopolitics field experiment <p class="infolinks">[<a href="javascript:toggleInfo('settle2017negative','bibtex')">BibTeX</a>]</p></td>
+	<td>2017</td>
+	<td>Political Psychology<br/>Vol. 38(6), pp. 1065-1082&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_settle2017negative" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{settle2017negative,
+  author = {Settle, Jaime E and Dawes, Christopher T and Loewen, Peter John and Panagopoulos, Costas},
+  title = {Negative affectivity, political contention, and turnout: A genopolitics field experiment},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2017},
+  volume = {38},
+  number = {6},
+  pages = {1065--1082}
+}
+</pre></td>
+</tr>
+<tr id="wolak2017roots" class="entry">
+	<td>Wolak, J. and Dawkins, R.</td>
+	<td>The Roots of Patriotism Across Political Contexts <p class="infolinks">[<a href="javascript:toggleInfo('wolak2017roots','bibtex')">BibTeX</a>]</p></td>
+	<td>2017</td>
+	<td>Political Psychology<br/>Vol. 38(3), pp. 391-408&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_wolak2017roots" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{wolak2017roots,
+  author = {Wolak, Jennifer and Dawkins, Ryan},
+  title = {The Roots of Patriotism Across Political Contexts},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2017},
+  volume = {38},
+  number = {3},
+  pages = {391--408}
+}
+</pre></td>
+</tr>
+<tr id="albertson2016did" class="entry">
+	<td>Albertson, B. and Gadarian, S.K.</td>
+	<td>Did that Scare You? Tips on Creating Emotion in Experimental Subjects <p class="infolinks">[<a href="javascript:toggleInfo('albertson2016did','bibtex')">BibTeX</a>]</p></td>
+	<td>2016</td>
+	<td>Political Analysis<br/>Vol. 24(4), pp. 485-491&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_albertson2016did" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{albertson2016did,
+  author = {Albertson, Bethany and Gadarian, Shana Kushner},
+  title = {Did that Scare You? Tips on Creating Emotion in Experimental Subjects},
+  journal = {Political Analysis},
+  publisher = {SPM-PMSAPSA},
+  year = {2016},
+  volume = {24},
+  number = {4},
+  pages = {485--491}
+}
+</pre></td>
+</tr>
+<tr id="carlson2016political" class="entry">
+	<td>Carlson, T.N. and Settle, J.E.</td>
+	<td>Political chameleons: An exploration of conformity in political discussions <p class="infolinks">[<a href="javascript:toggleInfo('carlson2016political','bibtex')">BibTeX</a>]</p></td>
+	<td>2016</td>
+	<td>Political Behavior<br/>Vol. 38(4), pp. 817-859&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_carlson2016political" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{carlson2016political,
+  author = {Carlson, Taylor N and Settle, Jaime E},
+  title = {Political chameleons: An exploration of conformity in political discussions},
+  journal = {Political Behavior},
+  publisher = {Springer},
+  year = {2016},
+  volume = {38},
+  number = {4},
+  pages = {817--859}
+}
+</pre></td>
+</tr>
+<tr id="kam2016disgust" class="entry">
+	<td>Kam, C.D. and Estes, B.A.</td>
+	<td>Disgust sensitivity and public demand for protection <p class="infolinks">[<a href="javascript:toggleInfo('kam2016disgust','bibtex')">BibTeX</a>]</p></td>
+	<td>2016</td>
+	<td>The Journal of Politics<br/>Vol. 78(2), pp. 481-496&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_kam2016disgust" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{kam2016disgust,
+  author = {Kam, Cindy D and Estes, Beth A},
+  title = {Disgust sensitivity and public demand for protection},
+  journal = {The Journal of Politics},
+  publisher = {University of Chicago Press Chicago, IL},
+  year = {2016},
+  volume = {78},
+  number = {2},
+  pages = {481--496}
+}
+</pre></td>
+</tr>
+<tr id="klar2016social" class="entry">
+	<td>Klar, S., Weber, C.R. and Krupnikov, Y.</td>
+	<td>Social Desirability Bias in the 2016 Presidential Election <p class="infolinks">[<a href="javascript:toggleInfo('klar2016social','bibtex')">BibTeX</a>]</p></td>
+	<td>2016</td>
+	<td><br/>Vol. 14(4)The Forum, pp. 433-443&nbsp;</td>
+	<td>inproceedings</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_klar2016social" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@inproceedings{klar2016social,
+  author = {Klar, Samara and Weber, Christopher R and Krupnikov, Yanna},
+  title = {Social Desirability Bias in the 2016 Presidential Election},
+  booktitle = {The Forum},
+  year = {2016},
+  volume = {14},
+  number = {4},
+  pages = {433--443}
+}
+</pre></td>
+</tr>
+<tr id="krupnikov2016saving" class="entry">
+	<td>Krupnikov, Y., Piston, S. and Bauer, N.M.</td>
+	<td>Saving face: Identifying voter responses to black candidates and female candidates <p class="infolinks">[<a href="javascript:toggleInfo('krupnikov2016saving','bibtex')">BibTeX</a>]</p></td>
+	<td>2016</td>
+	<td>Political Psychology<br/>Vol. 37(2), pp. 253-273&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_krupnikov2016saving" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{krupnikov2016saving,
+  author = {Krupnikov, Yanna and Piston, Spencer and Bauer, Nichole M},
+  title = {Saving face: Identifying voter responses to black candidates and female candidates},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2016},
+  volume = {37},
+  number = {2},
+  pages = {253--273}
+}
+</pre></td>
+</tr>
+<tr id="margolis2016cognitive" class="entry">
+	<td>Margolis, M.F.</td>
+	<td>Cognitive dissonance, elections, and religion: How partisanship and the political landscape shape religious behaviors <p class="infolinks">[<a href="javascript:toggleInfo('margolis2016cognitive','bibtex')">BibTeX</a>]</p></td>
+	<td>2016</td>
+	<td>Public Opinion Quarterly<br/>Vol. 80(3), pp. 717-740&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_margolis2016cognitive" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{margolis2016cognitive,
+  author = {Margolis, Michele F},
+  title = {Cognitive dissonance, elections, and religion: How partisanship and the political landscape shape religious behaviors},
+  journal = {Public Opinion Quarterly},
+  publisher = {Oxford University Press US},
+  year = {2016},
+  volume = {80},
+  number = {3},
+  pages = {717--740}
+}
+</pre></td>
+</tr>
+<tr id="mason2016cross" class="entry">
+	<td>Mason, L.</td>
+	<td>A Cross-Cutting Calm <p class="infolinks">[<a href="javascript:toggleInfo('mason2016cross','bibtex')">BibTeX</a>]</p></td>
+	<td>2016</td>
+	<td>Public Opinion Quarterly<br/>Vol. 80(S1), pp. 351-377&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_mason2016cross" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{mason2016cross,
+  author = {Mason, Lilliana},
+  title = {A Cross-Cutting Calm},
+  journal = {Public Opinion Quarterly},
+  publisher = {Public Opinion Quarterly Inc},
+  year = {2016},
+  volume = {80},
+  number = {S1},
+  pages = {351--377}
+}
+</pre></td>
+</tr>
+<tr id="mendelberg2016power" class="entry">
+	<td>Mendelberg, T. and Karpowitz, C.F.</td>
+	<td>Power, gender, and group discussion <p class="infolinks">[<a href="javascript:toggleInfo('mendelberg2016power','bibtex')">BibTeX</a>]</p></td>
+	<td>2016</td>
+	<td>Political Psychology<br/>Vol. 37, pp. 23-60&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_mendelberg2016power" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{mendelberg2016power,
+  author = {Mendelberg, Tali and Karpowitz, Christopher F},
+  title = {Power, gender, and group discussion},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2016},
+  volume = {37},
+  pages = {23--60}
+}
+</pre></td>
+</tr>
+<tr id="searles2016boss" class="entry">
+	<td>Searles, K. and Smith, G.</td>
+	<td>Who’s the boss? setting the agenda in a fragmented media environment <p class="infolinks">[<a href="javascript:toggleInfo('searles2016boss','bibtex')">BibTeX</a>]</p></td>
+	<td>2016</td>
+	<td>International Journal of Communication<br/>Vol. 10, pp. 22&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_searles2016boss" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{searles2016boss,
+  author = {Searles, Kathleen and Smith, Glen},
+  title = {Who’s the boss? setting the agenda in a fragmented media environment},
+  journal = {International Journal of Communication},
+  year = {2016},
+  volume = {10},
+  pages = {22}
+}
+</pre></td>
+</tr>
+<tr id="searles2016whom" class="entry">
+	<td>Searles, K., Ginn, M.H. and Nickens, J.</td>
+	<td>For Whom the Poll Airs: Comparing Poll Results to Television Poll Coverage <p class="infolinks">[<a href="javascript:toggleInfo('searles2016whom','bibtex')">BibTeX</a>]</p></td>
+	<td>2016</td>
+	<td>Public Opinion Quarterly<br/>Vol. 80(4), pp. 943-963&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_searles2016whom" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{searles2016whom,
+  author = {Searles, Kathleen and Ginn, Martha Humphries and Nickens, Jonathan},
+  title = {For Whom the Poll Airs: Comparing Poll Results to Television Poll Coverage},
+  journal = {Public Opinion Quarterly},
+  publisher = {Oxford University Press},
+  year = {2016},
+  volume = {80},
+  number = {4},
+  pages = {943--963}
+}
+</pre></td>
+</tr>
+<tr id="settle2016posting" class="entry">
+	<td>Settle, J.E., Bond, R.M., Coviello, L., Fariss, C.J., Fowler, J.H. and Jones, J.J.</td>
+	<td>From posting to voting: The effects of political competition on online political engagement <p class="infolinks">[<a href="javascript:toggleInfo('settle2016posting','bibtex')">BibTeX</a>]</p></td>
+	<td>2016</td>
+	<td>Political Science Research and Methods<br/>Vol. 4(2), pp. 361-378&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_settle2016posting" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{settle2016posting,
+  author = {Settle, Jaime E and Bond, Robert M and Coviello, Lorenzo and Fariss, Christopher J and Fowler, James H and Jones, Jason J},
+  title = {From posting to voting: The effects of political competition on online political engagement},
+  journal = {Political Science Research and Methods},
+  publisher = {Cambridge University Press},
+  year = {2016},
+  volume = {4},
+  number = {2},
+  pages = {361--378}
+}
+</pre></td>
+</tr>
+<tr id="thorson2016belief" class="entry">
+	<td>Thorson, E.</td>
+	<td>Belief Echoes: The Persistent Effects of Corrected Misinformation <p class="infolinks">[<a href="javascript:toggleInfo('thorson2016belief','bibtex')">BibTeX</a>]</p></td>
+	<td>2016</td>
+	<td>Political Communication<br/>Vol. 33(3), pp. 460-480&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_thorson2016belief" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{thorson2016belief,
+  author = {Thorson, Emily},
+  title = {Belief Echoes: The Persistent Effects of Corrected Misinformation},
+  journal = {Political Communication},
+  publisher = {Taylor &amp; Francis},
+  year = {2016},
+  volume = {33},
+  number = {3},
+  pages = {460--480}
+}
+</pre></td>
+</tr>
+<tr id="albertson2015hearts" class="entry">
+	<td>Albertson, B. and Busby, J.W.</td>
+	<td>Hearts or minds? Identifying persuasive messages on climate change <p class="infolinks">[<a href="javascript:toggleInfo('albertson2015hearts','bibtex')">BibTeX</a>]</p></td>
+	<td>2015</td>
+	<td>Research &amp; Politics<br/>Vol. 2(1), pp. 2053168015577712&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_albertson2015hearts" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{albertson2015hearts,
+  author = {Albertson, Bethany and Busby, Joshua William},
+  title = {Hearts or minds? Identifying persuasive messages on climate change},
+  journal = {Research &amp; Politics},
+  publisher = {SAGE Publications Sage UK: London, England},
+  year = {2015},
+  volume = {2},
+  number = {1},
+  pages = {2053168015577712}
+}
+</pre></td>
+</tr>
+<tr id="bauer2015emotional" class="entry">
+	<td>Bauer, N.M.</td>
+	<td>Emotional, sensitive, and unfit for office? Gender stereotype activation and support female candidates <p class="infolinks">[<a href="javascript:toggleInfo('bauer2015emotional','bibtex')">BibTeX</a>]</p></td>
+	<td>2015</td>
+	<td>Political Psychology<br/>Vol. 36(6), pp. 691-708&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_bauer2015emotional" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{bauer2015emotional,
+  author = {Bauer, Nichole M},
+  title = {Emotional, sensitive, and unfit for office? Gender stereotype activation and support female candidates},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2015},
+  volume = {36},
+  number = {6},
+  pages = {691--708}
+}
+</pre></td>
+</tr>
+<tr id="clifford2015concerns" class="entry">
+	<td>Clifford, S., Jerit, J., Rainey, C. and Motyl, M.</td>
+	<td>Moral Concerns and Policy Attitudes: Investigating the Influence of Elite Rhetoric <p class="infolinks">[<a href="javascript:toggleInfo('clifford2015concerns','bibtex')">BibTeX</a>]</p></td>
+	<td>2015</td>
+	<td>Political Communication<br/>Vol. 32(2), pp. 229-248&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_clifford2015concerns" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{clifford2015concerns,
+  author = {Clifford, Scott and Jerit, Jennifer and Rainey, Carlisle and Motyl, Matt},
+  title = {Moral Concerns and Policy Attitudes: Investigating the Influence of Elite Rhetoric},
+  journal = {Political Communication},
+  publisher = {Taylor &amp; Francis},
+  year = {2015},
+  volume = {32},
+  number = {2},
+  pages = {229--248}
+}
+</pre></td>
+</tr>
+<tr id="dawes2015genes" class="entry">
+	<td>Dawes, C.T., Settle, J.E., Loewen, P.J., McGue, M. and Iacono, W.G.</td>
+	<td>Genes, psychological traits and civic engagement <p class="infolinks">[<a href="javascript:toggleInfo('dawes2015genes','bibtex')">BibTeX</a>]</p></td>
+	<td>2015</td>
+	<td>Philosophical Transactions of the Royal Society B: Biological Sciences<br/>Vol. 370(1683), pp. 20150015&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_dawes2015genes" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{dawes2015genes,
+  author = {Dawes, Christopher T and Settle, Jaime E and Loewen, Peter John and McGue, Matt and Iacono, William G},
+  title = {Genes, psychological traits and civic engagement},
+  journal = {Philosophical Transactions of the Royal Society B: Biological Sciences},
+  publisher = {The Royal Society},
+  year = {2015},
+  volume = {370},
+  number = {1683},
+  pages = {20150015}
+}
+</pre></td>
+</tr>
+<tr id="holman2015gender" class="entry">
+	<td>Holman, M.R., Schneider, M.C. and Pondel, K.</td>
+	<td>Gender targeting in political advertisements <p class="infolinks">[<a href="javascript:toggleInfo('holman2015gender','bibtex')">BibTeX</a>]</p></td>
+	<td>2015</td>
+	<td>Political Research Quarterly<br/>Vol. 68(4), pp. 816-829&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_holman2015gender" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{holman2015gender,
+  author = {Holman, Mirya R and Schneider, Monica C and Pondel, Kristin},
+  title = {Gender targeting in political advertisements},
+  journal = {Political Research Quarterly},
+  publisher = {SAGE Publications Sage CA: Los Angeles, CA},
+  year = {2015},
+  volume = {68},
+  number = {4},
+  pages = {816--829}
+}
+</pre></td>
+</tr>
+<tr id="huddy2015expressive" class="entry">
+	<td>Huddy, L., Mason, L. and Aar&oslash;e, L.</td>
+	<td>Expressive Partisanship: Campaign Involvement, Political Emotion, and Partisan Identity <p class="infolinks">[<a href="javascript:toggleInfo('huddy2015expressive','bibtex')">BibTeX</a>]</p></td>
+	<td>2015</td>
+	<td>American Political Science Review<br/>Vol. 109(01), pp. 1-17&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_huddy2015expressive" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{huddy2015expressive,
+  author = {Huddy, Leonie and Mason, Lilliana and Aar&oslash;e, Lene},
+  title = {Expressive Partisanship: Campaign Involvement, Political Emotion, and Partisan Identity},
+  journal = {American Political Science Review},
+  year = {2015},
+  volume = {109},
+  number = {01},
+  pages = {1--17}
+}
+</pre></td>
+</tr>
+<tr id="krupnikov2015racial" class="entry">
+	<td>Krupnikov, Y. and Piston, S.</td>
+	<td>Racial Prejudice, Partisanship, and White Turnout in Elections with Black Candidates <p class="infolinks">[<a href="javascript:toggleInfo('krupnikov2015racial','bibtex')">BibTeX</a>]</p></td>
+	<td>2015</td>
+	<td>Political Behavior<br/>Vol. forthcoming, pp. 1-22&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_krupnikov2015racial" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{krupnikov2015racial,
+  author = {Krupnikov, Yanna and Piston, Spencer},
+  title = {Racial Prejudice, Partisanship, and White Turnout in Elections with Black Candidates},
+  journal = {Political Behavior},
+  publisher = {Springer},
+  year = {2015},
+  volume = {forthcoming},
+  pages = {1--22}
+}
+</pre></td>
+</tr>
+<tr id="mason2014disrespectfully" class="entry">
+	<td>Mason, L.</td>
+	<td>I Disrespectfully Agree: The Differential Effects of Partisan Sorting on Behavioral and Issue Polarization <p class="infolinks">[<a href="javascript:toggleInfo('mason2014disrespectfully','abstract')">Abstract</a>] [<a href="javascript:toggleInfo('mason2014disrespectfully','bibtex')">BibTeX</a>]</p></td>
+	<td>2015</td>
+	<td>American Journal of Political Science<br/>Vol. 59(1), pp. 128-145&nbsp;</td>
+	<td>article</td>
+	<td><a href="https://doi.org/10.1111/ajps.12089">DOI</a> <a href="http://dx.doi.org/10.1111/ajps.12089">URL</a>&nbsp;</td>
+</tr>
+<tr id="abs_mason2014disrespectfully" class="abstract noshow">
+	<td colspan="6"><b>Abstract</b>: Disagreements over whether polarization exists in the mass public have confounded two separate types of polarization. When social polarization is separated from issue position polarization, both sides of the polarization debate can be simultaneously correct. Social polarization, characterized by increased levels of partisan bias, activism, and anger, is increasing, driven by partisan identity and political identity alignment, and does not require the same magnitude of issue position polarization. The partisan-ideological sorting that has occurred in recent decades has caused the nation as a whole to hold more aligned political identities, which has strengthened partisan identity and the activism, bias, and anger that result from strong identities, even though issue positions have not undergone the same degree of polarization. The result is a nation that agrees on many things but is bitterly divided nonetheless. An examination of ANES data finds strong support for these hypotheses.</td>
+</tr>
+<tr id="bib_mason2014disrespectfully" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{mason2014disrespectfully,
+  author = {Mason, Lilliana},
+  title = {I Disrespectfully Agree: The Differential Effects of Partisan Sorting on Behavioral and Issue Polarization},
+  journal = {American Journal of Political Science},
+  year = {2015},
+  volume = {59},
+  number = {1},
+  pages = {128--145},
+  url = {http://dx.doi.org/10.1111/ajps.12089},
+  doi = {https://doi.org/10.1111/ajps.12089}
+}
+</pre></td>
+</tr>
+<tr id="tokeshi2015countering" class="entry">
+	<td>Tokeshi, M. and Mendelberg, T.</td>
+	<td>Countering Implicit Appeals: Which Strategies Work? <p class="infolinks">[<a href="javascript:toggleInfo('tokeshi2015countering','bibtex')">BibTeX</a>]</p></td>
+	<td>2015</td>
+	<td>Political Communication<br/>Vol. 32(4), pp. 648-672&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_tokeshi2015countering" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{tokeshi2015countering,
+  author = {Tokeshi, Matthew and Mendelberg, Tali},
+  title = {Countering Implicit Appeals: Which Strategies Work?},
+  journal = {Political Communication},
+  publisher = {Taylor &amp; Francis},
+  year = {2015},
+  volume = {32},
+  number = {4},
+  pages = {648--672}
+}
+</pre></td>
+</tr>
+<tr id="barabas2014question" class="entry">
+	<td>Barabas, J., Jerit, J., Pollock, W. and Rainey, C.</td>
+	<td>The Question(s) of Political Knowledge <p class="infolinks">[<a href="javascript:toggleInfo('barabas2014question','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>American Political Science Review<br/>Vol. 108(04), pp. 840-855&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_barabas2014question" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{barabas2014question,
+  author = {Barabas, Jason and Jennifer Jerit and William Pollock and Carlisle Rainey},
+  title = {The Question(s) of Political Knowledge},
+  journal = {American Political Science Review},
+  publisher = {Cambridge Univ Press},
+  year = {2014},
+  volume = {108},
+  number = {04},
+  pages = {840--855}
+}
+</pre></td>
+</tr>
+<tr id="boydstun2014two" class="entry">
+	<td>Boydstun, A.E., Hardy, A. and Walgrave, S.</td>
+	<td>Two faces of media attention: Media storm versus non-storm coverage <p class="infolinks">[<a href="javascript:toggleInfo('boydstun2014two','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>Political Communication<br/>Vol. 31(4), pp. 509-531&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_boydstun2014two" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{boydstun2014two,
+  author = {Boydstun, Amber E and Hardy, Anne and Walgrave, Stefaan},
+  title = {Two faces of media attention: Media storm versus non-storm coverage},
+  journal = {Political Communication},
+  publisher = {Taylor &amp; Francis},
+  year = {2014},
+  volume = {31},
+  number = {4},
+  pages = {509--531}
+}
+</pre></td>
+</tr>
+<tr id="fowler2014political" class="entry">
+	<td>Fowler, A. and Margolis, M.</td>
+	<td>The political consequences of uninformed voters <p class="infolinks">[<a href="javascript:toggleInfo('fowler2014political','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>Electoral Studies<br/>Vol. 34, pp. 100-110&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_fowler2014political" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{fowler2014political,
+  author = {Fowler, Anthony and Margolis, Michele},
+  title = {The political consequences of uninformed voters},
+  journal = {Electoral Studies},
+  publisher = {Elsevier},
+  year = {2014},
+  volume = {34},
+  pages = {100--110}
+}
+</pre></td>
+</tr>
+<tr id="gadarian2014anxiety" class="entry">
+	<td>Gadarian, S.K. and Albertson, B.</td>
+	<td>Anxiety, immigration, and the search for information <p class="infolinks">[<a href="javascript:toggleInfo('gadarian2014anxiety','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>Political Psychology<br/>Vol. 35(2), pp. 133-164&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_gadarian2014anxiety" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{gadarian2014anxiety,
+  author = {Gadarian, Shana Kushner and Albertson, Bethany},
+  title = {Anxiety, immigration, and the search for information},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2014},
+  volume = {35},
+  number = {2},
+  pages = {133--164}
+}
+</pre></td>
+</tr>
+<tr id="haas2014uncertainty" class="entry">
+	<td>Haas, I.J. and Cunningham, W.A.</td>
+	<td>The uncertainty paradox: Perceived threat moderates the effect of uncertainty on political tolerance <p class="infolinks">[<a href="javascript:toggleInfo('haas2014uncertainty','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>Political Psychology<br/>Vol. 35(2), pp. 291-302&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_haas2014uncertainty" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{haas2014uncertainty,
+  author = {Haas, Ingrid Johnsen and Cunningham, William A},
+  title = {The uncertainty paradox: Perceived threat moderates the effect of uncertainty on political tolerance},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2014},
+  volume = {35},
+  number = {2},
+  pages = {291--302}
+}
+</pre></td>
+</tr>
+<tr id="hannagan2014theorizing" class="entry">
+	<td>Hannagan, R.J., Littvay, L. and Popa, S.A.</td>
+	<td>Theorizing sex differences in political knowledge: Insights from a twin study <p class="infolinks">[<a href="javascript:toggleInfo('hannagan2014theorizing','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>Politics &amp; Gender<br/>Vol. 10(1), pp. 89-114&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_hannagan2014theorizing" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{hannagan2014theorizing,
+  author = {Hannagan, Rebecca J and Littvay, Levente and Popa, Sebastian Adrian},
+  title = {Theorizing sex differences in political knowledge: Insights from a twin study},
+  journal = {Politics &amp; Gender},
+  publisher = {Cambridge University Press},
+  year = {2014},
+  volume = {10},
+  number = {1},
+  pages = {89--114}
+}
+</pre></td>
+</tr>
+<tr id="kertzer2014moral" class="entry">
+	<td>Kertzer, J.D., Powers, K.E., Rathbun, B.C. and Iyer, R.</td>
+	<td>Moral Support: How Moral Values Shape Foreign Policy Attitudes <p class="infolinks">[<a href="javascript:toggleInfo('kertzer2014moral','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>Journal of Politics<br/>Vol. 76(3), pp. 825-840&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_kertzer2014moral" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{kertzer2014moral,
+  author = {Kertzer, Joshua D. and Powers, Kathleen E. and Rathbun, Brian C. and Iyer, Ravi},
+  title = {Moral Support: How Moral Values Shape Foreign Policy Attitudes},
+  journal = {Journal of Politics},
+  publisher = {Cambridge Univ Press},
+  year = {2014},
+  volume = {76},
+  number = {3},
+  pages = {825--840}
+}
+</pre></td>
+</tr>
+<tr id="klar2014identity" class="entry">
+	<td>Klar, S.</td>
+	<td>Identity and engagement among political independents in America <p class="infolinks">[<a href="javascript:toggleInfo('klar2014identity','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>Political Psychology<br/>Vol. 35(4), pp. 577-591&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_klar2014identity" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{klar2014identity,
+  author = {Klar, Samara},
+  title = {Identity and engagement among political independents in America},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2014},
+  volume = {35},
+  number = {4},
+  pages = {577--591}
+}
+</pre></td>
+</tr>
+<tr id="klar2014multidimensional" class="entry">
+	<td>Klar, S.</td>
+	<td>A Multidimensional Study of Ideological Preferences and Priorities among the American Public <p class="infolinks">[<a href="javascript:toggleInfo('klar2014multidimensional','abstract')">Abstract</a>] [<a href="javascript:toggleInfo('klar2014multidimensional','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>Public Opinion Quarterly<br/>Vol. 78(S1), pp. 344-359&nbsp;</td>
+	<td>article</td>
+	<td><a href="https://doi.org/10.1093/poq/nfu010">DOI</a> <a href="http://poq.oxfordjournals.org/content/78/S1/344.abstract">URL</a>&nbsp;</td>
+</tr>
+<tr id="abs_klar2014multidimensional" class="abstract noshow">
+	<td colspan="6"><b>Abstract</b>: Political ideology is not always best measured along a unidimensional spectrum. With a multidimensional construct, we are better able to understand the complexities of Americansï¿½ ideological views. This research note presents new survey data from a nationally representative sample of over 2,000 Americans. The survey asks respondents to place themselves on distinct ideological scales regarding social and economic issues, then to prioritize the importance of these issues. The first of its kind to include both ideological preferences and attitude importance, this survey contributes new insights into the complex dimensionality of ideology. Results reveal a plurality of individuals identifying as conservative on both social and economic issues, and a smaller group that is consistently liberal on both policy spectrums. Eleven percent of respondents self-identify as liberal on one scale and conservative on the other, yet choose to identify as ï¿½moderateï¿½ on the traditional unidimensional scale. By analyzing an extensive set of attitudinal and behavioral measures-including vote choice in the 2012 presidential election-this research demonstrates that true moderates are substantially different from those who mix both social and economic beliefs. It further shows that the vast majority of Americans place more importance on economic issues than on social issues, which has greater influence over respondentsï¿½ unidimensional ideological placement as well as their presidential vote choice. This study reveals important consequences of the multidimensional nature of ideology at the mass level.</td>
+</tr>
+<tr id="bib_klar2014multidimensional" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{klar2014multidimensional,
+  author = {Klar, Samara},
+  title = {A Multidimensional Study of Ideological Preferences and Priorities among the American Public},
+  journal = {Public Opinion Quarterly},
+  year = {2014},
+  volume = {78},
+  number = {S1},
+  pages = {344-359},
+  url = {http://poq.oxfordjournals.org/content/78/S1/344.abstract},
+  doi = {https://doi.org/10.1093/poq/nfu010}
+}
+</pre></td>
+</tr>
+<tr id="klar2014partisanship" class="entry">
+	<td>Klar, S.</td>
+	<td>Partisanship in a social setting <p class="infolinks">[<a href="javascript:toggleInfo('klar2014partisanship','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>American Journal of Political Science<br/>Vol. 58(3), pp. 687-704&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_klar2014partisanship" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{klar2014partisanship,
+  author = {Klar, Samara},
+  title = {Partisanship in a social setting},
+  journal = {American Journal of Political Science},
+  publisher = {Wiley Online Library},
+  year = {2014},
+  volume = {58},
+  number = {3},
+  pages = {687--704}
+}
+</pre></td>
+</tr>
+<tr id="krupnikov2014relationship" class="entry">
+	<td>Krupnikov, Y. and Bauer, N.M.</td>
+	<td>The relationship between campaign negativity, gender and campaign context <p class="infolinks">[<a href="javascript:toggleInfo('krupnikov2014relationship','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>Political Behavior<br/>Vol. 36(1), pp. 167-188&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_krupnikov2014relationship" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{krupnikov2014relationship,
+  author = {Krupnikov, Yanna and Bauer, Nichole M},
+  title = {The relationship between campaign negativity, gender and campaign context},
+  journal = {Political Behavior},
+  publisher = {Springer},
+  year = {2014},
+  volume = {36},
+  number = {1},
+  pages = {167--188}
+}
+</pre></td>
+</tr>
+<tr id="ledgerwood2014sticky" class="entry">
+	<td>Ledgerwood, A. and Boydstun, A.E.</td>
+	<td>Sticky prospects: Loss frames are cognitively stickier than gain frames. <p class="infolinks">[<a href="javascript:toggleInfo('ledgerwood2014sticky','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>Journal of Experimental Psychology: General<br/>Vol. 143(1), pp. 376&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_ledgerwood2014sticky" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{ledgerwood2014sticky,
+  author = {Ledgerwood, Alison and Boydstun, Amber E},
+  title = {Sticky prospects: Loss frames are cognitively stickier than gain frames.},
+  journal = {Journal of Experimental Psychology: General},
+  publisher = {American Psychological Association},
+  year = {2014},
+  volume = {143},
+  number = {1},
+  pages = {376}
+}
+</pre></td>
+</tr>
+<tr id="mendelberg2014does" class="entry">
+	<td>Mendelberg, T., Karpowitz, C.F. and Goedert, N.</td>
+	<td>Does descriptive representation facilitate women's distinctive voice? How gender composition and decision rules affect deliberation <p class="infolinks">[<a href="javascript:toggleInfo('mendelberg2014does','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>American Journal of Political Science<br/>Vol. 58(2), pp. 291-306&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_mendelberg2014does" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{mendelberg2014does,
+  author = {Mendelberg, Tali and Karpowitz, Christopher F and Goedert, Nicholas},
+  title = {Does descriptive representation facilitate women's distinctive voice? How gender composition and decision rules affect deliberation},
+  journal = {American Journal of Political Science},
+  publisher = {Wiley Online Library},
+  year = {2014},
+  volume = {58},
+  number = {2},
+  pages = {291--306}
+}
+</pre></td>
+</tr>
+<tr id="mendelberg2014gender" class="entry">
+	<td>Mendelberg, T., Karpowitz, C.F. and Oliphant, J.B.</td>
+	<td>Gender inequality in deliberation: Unpacking the black box of interaction <p class="infolinks">[<a href="javascript:toggleInfo('mendelberg2014gender','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>Perspectives on Politics<br/>Vol. 12(01), pp. 18-44&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_mendelberg2014gender" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{mendelberg2014gender,
+  author = {Mendelberg, Tali and Karpowitz, Christopher F and Oliphant, J Baxter},
+  title = {Gender inequality in deliberation: Unpacking the black box of interaction},
+  journal = {Perspectives on Politics},
+  publisher = {Cambridge Univ Press},
+  year = {2014},
+  volume = {12},
+  number = {01},
+  pages = {18--44}
+}
+</pre></td>
+</tr>
+<tr id="smith2014let" class="entry">
+	<td>Smith, G. and Searles, K.</td>
+	<td>Who let the (attack) dogs out? New evidence for partisan media effects <p class="infolinks">[<a href="javascript:toggleInfo('smith2014let','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>Public Opinion Quarterly<br/>Vol. 78(1), pp. 71-99&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_smith2014let" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{smith2014let,
+  author = {Smith, Glen and Searles, Kathleen},
+  title = {Who let the (attack) dogs out? New evidence for partisan media effects},
+  journal = {Public Opinion Quarterly},
+  publisher = {Oxford University Press UK},
+  year = {2014},
+  volume = {78},
+  number = {1},
+  pages = {71--99}
+}
+</pre></td>
+</tr>
+<tr id="thorson2014beyond" class="entry">
+	<td>Thorson, E.</td>
+	<td>Beyond opinion leaders: How attempts to persuade foster political awareness and campaign learning <p class="infolinks">[<a href="javascript:toggleInfo('thorson2014beyond','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>Communication research<br/>Vol. 41(3), pp. 353-374&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_thorson2014beyond" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{thorson2014beyond,
+  author = {Thorson, Emily},
+  title = {Beyond opinion leaders: How attempts to persuade foster political awareness and campaign learning},
+  journal = {Communication research},
+  publisher = {Sage Publications Sage CA: Los Angeles, CA},
+  year = {2014},
+  volume = {41},
+  number = {3},
+  pages = {353--374}
+}
+</pre></td>
+</tr>
+<tr id="wolak2014campaigns" class="entry">
+	<td>Wolak, J.</td>
+	<td>How campaigns promote the legitimacy of elections <p class="infolinks">[<a href="javascript:toggleInfo('wolak2014campaigns','bibtex')">BibTeX</a>]</p></td>
+	<td>2014</td>
+	<td>Electoral Studies<br/>Vol. 34, pp. 205-215&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_wolak2014campaigns" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{wolak2014campaigns,
+  author = {Wolak, Jennifer},
+  title = {How campaigns promote the legitimacy of elections},
+  journal = {Electoral Studies},
+  publisher = {Elsevier},
+  year = {2014},
+  volume = {34},
+  pages = {205--215}
+}
+</pre></td>
+</tr>
+<tr id="boydstun2013playing" class="entry">
+	<td>Boydstun, A.E., Glazier, R.A. and Pietryka, M.T.</td>
+	<td>Playing to the crowd: Agenda control in presidential debates <p class="infolinks">[<a href="javascript:toggleInfo('boydstun2013playing','bibtex')">BibTeX</a>]</p></td>
+	<td>2013</td>
+	<td>Political Communication<br/>Vol. 30(2), pp. 254-277&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_boydstun2013playing" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{boydstun2013playing,
+  author = {Boydstun, Amber E and Glazier, Rebecca A and Pietryka, Matthew T},
+  title = {Playing to the crowd: Agenda control in presidential debates},
+  journal = {Political Communication},
+  publisher = {Taylor &amp; Francis},
+  year = {2013},
+  volume = {30},
+  number = {2},
+  pages = {254--277}
+}
+</pre></td>
+</tr>
+<tr id="clifford2013words" class="entry">
+	<td>Clifford, S. and Jerit, J.</td>
+	<td>How Words Do the Work of Politics: Moral Foundations Theory and the Debate over Stem Cell Research <p class="infolinks">[<a href="javascript:toggleInfo('clifford2013words','bibtex')">BibTeX</a>]</p></td>
+	<td>2013</td>
+	<td>Journal of Politics<br/>Vol. 75(3), pp. 659-671&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_clifford2013words" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{clifford2013words,
+  author = {Clifford, Scott and Jerit, Jennifer},
+  title = {How Words Do the Work of Politics: Moral Foundations Theory and the Debate over Stem Cell Research},
+  journal = {Journal of Politics},
+  publisher = {Cambridge Univ Press},
+  year = {2013},
+  volume = {75},
+  number = {3},
+  pages = {659--671}
+}
+</pre></td>
+</tr>
+<tr id="jones2013inferring" class="entry">
+	<td>Jones, J.J., Settle, J.E., Bond, R.M., Fariss, C.J., Marlow, C. and Fowler, J.H.</td>
+	<td>Inferring tie strength from online directed behavior <p class="infolinks">[<a href="javascript:toggleInfo('jones2013inferring','bibtex')">BibTeX</a>]</p></td>
+	<td>2013</td>
+	<td>PloS one<br/>Vol. 8(1), pp. e52168&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_jones2013inferring" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{jones2013inferring,
+  author = {Jones, Jason J and Settle, Jaime E and Bond, Robert M and Fariss, Christopher J and Marlow, Cameron and Fowler, James H},
+  title = {Inferring tie strength from online directed behavior},
+  journal = {PloS one},
+  publisher = {Public Library of Science},
+  year = {2013},
+  volume = {8},
+  number = {1},
+  pages = {e52168}
+}
+</pre></td>
+</tr>
+<tr id="klar2013influence" class="entry">
+	<td>Klar, S.</td>
+	<td>The influence of competing identity primes on political preferences <p class="infolinks">[<a href="javascript:toggleInfo('klar2013influence','bibtex')">BibTeX</a>]</p></td>
+	<td>2013</td>
+	<td>The Journal of Politics<br/>Vol. 75(4), pp. 1108-1124&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_klar2013influence" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{klar2013influence,
+  author = {Klar, Samara},
+  title = {The influence of competing identity primes on political preferences},
+  journal = {The Journal of Politics},
+  publisher = {Cambridge University Press New York, USA},
+  year = {2013},
+  volume = {75},
+  number = {4},
+  pages = {1108--1124}
+}
+</pre></td>
+</tr>
+<tr id="myers2013political" class="entry">
+	<td>Myers, C.D. and Mendelberg, T.</td>
+	<td>Political deliberation <p class="infolinks">[<a href="javascript:toggleInfo('myers2013political','bibtex')">BibTeX</a>]</p></td>
+	<td>2013</td>
+	<td>The Oxford handbook of political psychology, pp. 699-734&nbsp;</td>
+	<td>incollection</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_myers2013political" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@incollection{myers2013political,
+  author = {Myers, C Daniel and Mendelberg, Tali},
+  title = {Political deliberation},
+  booktitle = {The Oxford handbook of political psychology},
+  publisher = {Oxford University Press New York NY},
+  year = {2013},
+  pages = {699--734}
+}
+</pre></td>
+</tr>
+<tr id="nteta2013change" class="entry">
+	<td>Nteta, T.M. and Greenlee, J.S.</td>
+	<td>A change is gonna come: Generational membership and White racial attitudes in the 21st century <p class="infolinks">[<a href="javascript:toggleInfo('nteta2013change','bibtex')">BibTeX</a>]</p></td>
+	<td>2013</td>
+	<td>Political Psychology<br/>Vol. 34(6), pp. 877-897&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_nteta2013change" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{nteta2013change,
+  author = {Nteta, Tatishe M and Greenlee, Jill S},
+  title = {A change is gonna come: Generational membership and White racial attitudes in the 21st century},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2013},
+  volume = {34},
+  number = {6},
+  pages = {877--897}
+}
+</pre></td>
+</tr>
+<tr id="smith2013fair" class="entry">
+	<td>Smith, G. and Searles, K.</td>
+	<td>Fair and balanced news or a difference of opinion? Why opinion shows matter for media effects <p class="infolinks">[<a href="javascript:toggleInfo('smith2013fair','bibtex')">BibTeX</a>]</p></td>
+	<td>2013</td>
+	<td>Political Research Quarterly<br/>Vol. 66(3), pp. 671-684&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_smith2013fair" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{smith2013fair,
+  author = {Smith, Glen and Searles, Kathleen},
+  title = {Fair and balanced news or a difference of opinion? Why opinion shows matter for media effects},
+  journal = {Political Research Quarterly},
+  publisher = {Sage Publications Sage CA: Los Angeles, CA},
+  year = {2013},
+  volume = {66},
+  number = {3},
+  pages = {671--684}
+}
+</pre></td>
+</tr>
+<tr id="utych2013viability" class="entry">
+	<td>Utych, S.M. and Kam, C.D.</td>
+	<td>Viability, information seeking, and vote choice <p class="infolinks">[<a href="javascript:toggleInfo('utych2013viability','bibtex')">BibTeX</a>]</p></td>
+	<td>2013</td>
+	<td>The Journal of Politics<br/>Vol. 76(1), pp. 152-166&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_utych2013viability" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{utych2013viability,
+  author = {Utych, Stephen M and Kam, Cindy D},
+  title = {Viability, information seeking, and vote choice},
+  journal = {The Journal of Politics},
+  publisher = {Cambridge University Press New York, USA},
+  year = {2013},
+  volume = {76},
+  number = {1},
+  pages = {152--166}
+}
+</pre></td>
+</tr>
+<tr id="bond2012million" class="entry">
+	<td>Bond, R.M., Fariss, C.J., Jones, J.J., Kramer, A.D., Marlow, C., Settle, J.E. and Fowler, J.H.</td>
+	<td>A 61-million-person experiment in social influence and political mobilization <p class="infolinks">[<a href="javascript:toggleInfo('bond2012million','bibtex')">BibTeX</a>]</p></td>
+	<td>2012</td>
+	<td>Nature<br/>Vol. 489(7415), pp. 295&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_bond2012million" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{bond2012million,
+  author = {Bond, Robert M and Fariss, Christopher J and Jones, Jason J and Kramer, Adam DI and Marlow, Cameron and Settle, Jaime E and Fowler, James H},
+  title = {A 61-million-person experiment in social influence and political mobilization},
+  journal = {Nature},
+  publisher = {Nature Publishing Group},
+  year = {2012},
+  volume = {489},
+  number = {7415},
+  pages = {295}
+}
+</pre></td>
+</tr>
+<tr id="doherty2012ends" class="entry">
+	<td>Doherty, D. and Wolak, J.</td>
+	<td>When do the ends justify the means? Evaluating procedural fairness <p class="infolinks">[<a href="javascript:toggleInfo('doherty2012ends','bibtex')">BibTeX</a>]</p></td>
+	<td>2012</td>
+	<td>Political Behavior<br/>Vol. 34(2), pp. 301-323&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_doherty2012ends" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{doherty2012ends,
+  author = {Doherty, David and Wolak, Jennifer},
+  title = {When do the ends justify the means? Evaluating procedural fairness},
+  journal = {Political Behavior},
+  publisher = {Springer},
+  year = {2012},
+  volume = {34},
+  number = {2},
+  pages = {301--323}
+}
+</pre></td>
+</tr>
+<tr id="hannagan2012data" class="entry">
+	<td>Hannagan, R.J., Schneider, M.C. and Greenlee, J.S.</td>
+	<td>Data, methods, and theoretical implications <p class="infolinks">[<a href="javascript:toggleInfo('hannagan2012data','bibtex')">BibTeX</a>]</p></td>
+	<td>2012</td>
+	<td>PS: Political Science &amp; Politics<br/>Vol. 45(2), pp. 232-237&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_hannagan2012data" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{hannagan2012data,
+  author = {Hannagan, Rebecca J and Schneider, Monica C and Greenlee, Jill S},
+  title = {Data, methods, and theoretical implications},
+  journal = {PS: Political Science &amp; Politics},
+  publisher = {Cambridge University Press},
+  year = {2012},
+  volume = {45},
+  number = {2},
+  pages = {232--237}
+}
+</pre></td>
+</tr>
+<tr id="hatemi2012genetics" class="entry">
+	<td>Hatemi, P.K. and McDermott, R.</td>
+	<td>The genetics of politics: discovery, challenges, and progress <p class="infolinks">[<a href="javascript:toggleInfo('hatemi2012genetics','bibtex')">BibTeX</a>]</p></td>
+	<td>2012</td>
+	<td>Trends in Genetics<br/>Vol. 28(10), pp. 525-533&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_hatemi2012genetics" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{hatemi2012genetics,
+  author = {Hatemi, Peter K and McDermott, Rose},
+  title = {The genetics of politics: discovery, challenges, and progress},
+  journal = {Trends in Genetics},
+  publisher = {Elsevier},
+  year = {2012},
+  volume = {28},
+  number = {10},
+  pages = {525--533}
+}
+</pre></td>
+</tr>
+<tr id="hatemi2012political" class="entry">
+	<td>Hatemi, P.K. and McDermott, R.</td>
+	<td>The political psychology of biology, genetics, and behavior <p class="infolinks">[<a href="javascript:toggleInfo('hatemi2012political','bibtex')">BibTeX</a>]</p></td>
+	<td>2012</td>
+	<td>Political Psychology<br/>Vol. 33(3), pp. 307-312&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_hatemi2012political" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{hatemi2012political,
+  author = {Hatemi, Peter K and McDermott, Rose},
+  title = {The political psychology of biology, genetics, and behavior},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2012},
+  volume = {33},
+  number = {3},
+  pages = {307--312}
+}
+</pre></td>
+</tr>
+<tr id="jerit2012partisan" class="entry">
+	<td>Jerit, J. and Barabas, J.</td>
+	<td>Partisan perceptual bias and the information environment <p class="infolinks">[<a href="javascript:toggleInfo('jerit2012partisan','bibtex')">BibTeX</a>]</p></td>
+	<td>2012</td>
+	<td>The Journal of Politics<br/>Vol. 74(03), pp. 672-684&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_jerit2012partisan" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{jerit2012partisan,
+  author = {Jerit, Jennifer and Barabas, Jason},
+  title = {Partisan perceptual bias and the information environment},
+  journal = {The Journal of Politics},
+  publisher = {Cambridge Univ Press},
+  year = {2012},
+  volume = {74},
+  number = {03},
+  pages = {672--684}
+}
+</pre></td>
+</tr>
+<tr id="lopez2012adaptation" class="entry">
+	<td>Lopez, A.C. and McDermott, R.</td>
+	<td>Adaptation, heritability, and the emergence of evolutionary political science <p class="infolinks">[<a href="javascript:toggleInfo('lopez2012adaptation','bibtex')">BibTeX</a>]</p></td>
+	<td>2012</td>
+	<td>Political Psychology<br/>Vol. 33(3), pp. 343-362&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_lopez2012adaptation" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{lopez2012adaptation,
+  author = {Lopez, Anthony C and McDermott, Rose},
+  title = {Adaptation, heritability, and the emergence of evolutionary political science},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2012},
+  volume = {33},
+  number = {3},
+  pages = {343--362}
+}
+</pre></td>
+</tr>
+<tr id="pietryka2012going" class="entry">
+	<td>Pietryka, M.T. and Boydstun, A.E.</td>
+	<td>Going maverick: how candidates can use agenda-setting to influence citizen motivations and offset unpopular issue positions <p class="infolinks">[<a href="javascript:toggleInfo('pietryka2012going','bibtex')">BibTeX</a>]</p></td>
+	<td>2012</td>
+	<td>Political Behavior<br/>Vol. 34(4), pp. 737-763&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_pietryka2012going" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{pietryka2012going,
+  author = {Pietryka, Matthew T and Boydstun, Amber E},
+  title = {Going maverick: how candidates can use agenda-setting to influence citizen motivations and offset unpopular issue positions},
+  journal = {Political Behavior},
+  publisher = {Springer},
+  year = {2012},
+  volume = {34},
+  number = {4},
+  pages = {737--763}
+}
+</pre></td>
+</tr>
+<tr id="hatemi2011integrating" class="entry">
+	<td>Hatemi, P.K., Dawes, C.T., Frost-Keller, A., Settle, J.E. and Verhulst, B.</td>
+	<td>Integrating social science and genetics: News from the political front <p class="infolinks">[<a href="javascript:toggleInfo('hatemi2011integrating','bibtex')">BibTeX</a>]</p></td>
+	<td>2011</td>
+	<td>Biodemography and social biology<br/>Vol. 57(1), pp. 67-87&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_hatemi2011integrating" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{hatemi2011integrating,
+  author = {Hatemi, Peter K and Dawes, Christopher T and Frost-Keller, Amanda and Settle, Jaime E and Verhulst, Brad},
+  title = {Integrating social science and genetics: News from the political front},
+  journal = {Biodemography and social biology},
+  publisher = {Taylor &amp; Francis},
+  year = {2011},
+  volume = {57},
+  number = {1},
+  pages = {67--87}
+}
+</pre></td>
+</tr>
+<tr id="krupnikov2011does" class="entry">
+	<td>Krupnikov, Y.</td>
+	<td>When does negativity demobilize? Tracing the conditional effect of negative campaigning on voter turnout <p class="infolinks">[<a href="javascript:toggleInfo('krupnikov2011does','bibtex')">BibTeX</a>]</p></td>
+	<td>2011</td>
+	<td>American Journal of Political Science<br/>Vol. 55(4), pp. 797-813&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_krupnikov2011does" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{krupnikov2011does,
+  author = {Krupnikov, Yanna},
+  title = {When does negativity demobilize? Tracing the conditional effect of negative campaigning on voter turnout},
+  journal = {American Journal of Political Science},
+  publisher = {Wiley Online Library},
+  year = {2011},
+  volume = {55},
+  number = {4},
+  pages = {797--813}
+}
+</pre></td>
+</tr>
+<tr id="ridout2011campaign" class="entry">
+	<td>Ridout, T.N. and Searles, K.</td>
+	<td>It's my campaign I'll cry if I want to: How and when campaigns use emotional appeals <p class="infolinks">[<a href="javascript:toggleInfo('ridout2011campaign','bibtex')">BibTeX</a>]</p></td>
+	<td>2011</td>
+	<td>Political Psychology<br/>Vol. 32(3), pp. 439-458&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_ridout2011campaign" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{ridout2011campaign,
+  author = {Ridout, Travis N and Searles, Kathleen},
+  title = {It's my campaign I'll cry if I want to: How and when campaigns use emotional appeals},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {2011},
+  volume = {32},
+  number = {3},
+  pages = {439--458}
+}
+</pre></td>
+</tr>
+<tr id="settle2011social" class="entry">
+	<td>Settle, J.E., Bond, R. and Levitt, J.</td>
+	<td>The social origins of adult political behavior <p class="infolinks">[<a href="javascript:toggleInfo('settle2011social','bibtex')">BibTeX</a>]</p></td>
+	<td>2011</td>
+	<td>American Politics Research<br/>Vol. 39(2), pp. 239-263&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_settle2011social" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{settle2011social,
+  author = {Settle, Jaime E and Bond, Robert and Levitt, Justin},
+  title = {The social origins of adult political behavior},
+  journal = {American Politics Research},
+  publisher = {Sage Publications Sage CA: Los Angeles, CA},
+  year = {2011},
+  volume = {39},
+  number = {2},
+  pages = {239--263}
+}
+</pre></td>
+</tr>
+<tr id="wolak2011roots" class="entry">
+	<td>Wolak, J. and McDevitt, M.</td>
+	<td>The roots of the gender gap in political knowledge in adolescence <p class="infolinks">[<a href="javascript:toggleInfo('wolak2011roots','bibtex')">BibTeX</a>]</p></td>
+	<td>2011</td>
+	<td>Political Behavior<br/>Vol. 33(3), pp. 505-533&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_wolak2011roots" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{wolak2011roots,
+  author = {Wolak, Jennifer and McDevitt, Michael},
+  title = {The roots of the gender gap in political knowledge in adolescence},
+  journal = {Political Behavior},
+  publisher = {Springer},
+  year = {2011},
+  volume = {33},
+  number = {3},
+  pages = {505--533}
+}
+</pre></td>
+</tr>
+<tr id="settle2009heritability" class="entry">
+	<td>Settle, J.E., Dawes, C.T. and Fowler, J.H.</td>
+	<td>The heritability of partisan attachment <p class="infolinks">[<a href="javascript:toggleInfo('settle2009heritability','bibtex')">BibTeX</a>]</p></td>
+	<td>2009</td>
+	<td>Political Research Quarterly<br/>Vol. 62(3), pp. 601-613&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_settle2009heritability" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{settle2009heritability,
+  author = {Settle, Jaime E and Dawes, Christopher T and Fowler, James H},
+  title = {The heritability of partisan attachment},
+  journal = {Political Research Quarterly},
+  publisher = {Sage Publications Sage CA: Los Angeles, CA},
+  year = {2009},
+  volume = {62},
+  number = {3},
+  pages = {601--613}
+}
+</pre></td>
+</tr>
+<tr id="wolak2009explaining" class="entry">
+	<td>Wolak, J.</td>
+	<td>Explaining change in party identification in adolescence <p class="infolinks">[<a href="javascript:toggleInfo('wolak2009explaining','bibtex')">BibTeX</a>]</p></td>
+	<td>2009</td>
+	<td>Electoral Studies<br/>Vol. 28(4), pp. 573-583&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_wolak2009explaining" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{wolak2009explaining,
+  author = {Wolak, Jennifer},
+  title = {Explaining change in party identification in adolescence},
+  journal = {Electoral Studies},
+  publisher = {Elsevier},
+  year = {2009},
+  volume = {28},
+  number = {4},
+  pages = {573--583}
+}
+</pre></td>
+</tr>
+<tr id="white2007race" class="entry">
+	<td>White, I.K.</td>
+	<td>When race matters and when it doesn't: Racial group differences in response to racial cues <p class="infolinks">[<a href="javascript:toggleInfo('white2007race','bibtex')">BibTeX</a>]</p></td>
+	<td>2007</td>
+	<td>American Political Science Review<br/>Vol. 101(02), pp. 339-354&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_white2007race" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{white2007race,
+  author = {White, Ismail K},
+  title = {When race matters and when it doesn't: Racial group differences in response to racial cues},
+  journal = {American Political Science Review},
+  publisher = {Cambridge Univ Press},
+  year = {2007},
+  volume = {101},
+  number = {02},
+  pages = {339--354}
+}
+</pre></td>
+</tr>
+<tr id="wolak2007personality" class="entry">
+	<td>Wolak, J. and Marcus, G.E.</td>
+	<td>Personality and emotional response: Strategic and tactical responses to changing political circumstances <p class="infolinks">[<a href="javascript:toggleInfo('wolak2007personality','bibtex')">BibTeX</a>]</p></td>
+	<td>2007</td>
+	<td>The Annals of the American Academy of Political and Social Science<br/>Vol. 614(1), pp. 172-195&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_wolak2007personality" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{wolak2007personality,
+  author = {Wolak, Jennifer and Marcus, George E},
+  title = {Personality and emotional response: Strategic and tactical responses to changing political circumstances},
+  journal = {The Annals of the American Academy of Political and Social Science},
+  publisher = {Sage Publications Sage CA: Los Angeles, CA},
+  year = {2007},
+  volume = {614},
+  number = {1},
+  pages = {172--195}
+}
+</pre></td>
+</tr>
+<tr id="jerit2006citizens" class="entry">
+	<td>Jerit, J., Barabas, J. and Bolsen, T.</td>
+	<td>Citizens, knowledge, and the information environment <p class="infolinks">[<a href="javascript:toggleInfo('jerit2006citizens','bibtex')">BibTeX</a>]</p></td>
+	<td>2006</td>
+	<td>American Journal of Political Science<br/>Vol. 50(2), pp. 266-282&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_jerit2006citizens" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{jerit2006citizens,
+  author = {Jerit, Jennifer and Barabas, Jason and Bolsen, Toby},
+  title = {Citizens, knowledge, and the information environment},
+  journal = {American Journal of Political Science},
+  publisher = {Wiley Online Library},
+  year = {2006},
+  volume = {50},
+  number = {2},
+  pages = {266--282}
+}
+</pre></td>
+</tr>
+<tr id="kuklinski2001political" class="entry">
+	<td>Kuklinski, J.H., Quirk, P.J., Jerit, J. and Rich, R.F.</td>
+	<td>The political environment and citizen competence <p class="infolinks">[<a href="javascript:toggleInfo('kuklinski2001political','bibtex')">BibTeX</a>]</p></td>
+	<td>2001</td>
+	<td>American Journal of Political Science, pp. 410-424&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_kuklinski2001political" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{kuklinski2001political,
+  author = {Kuklinski, James H and Quirk, Paul J and Jerit, Jennifer and Rich, Robert F},
+  title = {The political environment and citizen competence},
+  journal = {American Journal of Political Science},
+  publisher = {JSTOR},
+  year = {2001},
+  pages = {410--424}
+}
+</pre></td>
+</tr>
+<tr id="kuklinski2000misinformation" class="entry">
+	<td>Kuklinski, J.H., Quirk, P.J., Jerit, J., Schwieder, D. and Rich, R.F.</td>
+	<td>Misinformation and the currency of democratic citizenship <p class="infolinks">[<a href="javascript:toggleInfo('kuklinski2000misinformation','bibtex')">BibTeX</a>]</p></td>
+	<td>2000</td>
+	<td>Journal of Politics<br/>Vol. 62(3), pp. 790-816&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_kuklinski2000misinformation" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{kuklinski2000misinformation,
+  author = {Kuklinski, James H and Quirk, Paul J and Jerit, Jennifer and Schwieder, David and Rich, Robert F},
+  title = {Misinformation and the currency of democratic citizenship},
+  journal = {Journal of Politics},
+  publisher = {Wiley Online Library},
+  year = {2000},
+  volume = {62},
+  number = {3},
+  pages = {790--816}
+}
+</pre></td>
+</tr>
+<tr id="boydstun2019celebrity" class="entry">
+	<td>Boydstun, A.E. and Lawrence, R.G.</td>
+	<td>When Celebrity and Political Journalism Collide: Reporting Standards, Entertainment, and the Conundrum of Covering Donald Trump’s 2016 Campaign <p class="infolinks">[<a href="javascript:toggleInfo('boydstun2019celebrity','bibtex')">BibTeX</a>]</p></td>
+	<td>forthcoming</td>
+	<td>Perspectives on Politics, pp. 1-16&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_boydstun2019celebrity" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{boydstun2019celebrity,
+  author = {Boydstun, Amber E and Lawrence, Regina G},
+  title = {When Celebrity and Political Journalism Collide: Reporting Standards, Entertainment, and the Conundrum of Covering Donald Trump’s 2016 Campaign},
+  journal = {Perspectives on Politics},
+  publisher = {Cambridge University Press},
+  year = {forthcoming},
+  pages = {1--16}
+}
+</pre></td>
+</tr>
+<tr id="carlson2019follow" class="entry">
+	<td>Carlson, T.N., McClean, C.T. and Settle, J.E.</td>
+	<td>Follow Your Heart: Could Psychophysiology Be Associated with Political Discussion Network Homogeneity? <p class="infolinks">[<a href="javascript:toggleInfo('carlson2019follow','bibtex')">BibTeX</a>]</p></td>
+	<td>forthcoming</td>
+	<td>Political Psychology&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_carlson2019follow" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{carlson2019follow,
+  author = {Carlson, Taylor N and McClean, Charles T and Settle, Jaime E},
+  title = {Follow Your Heart: Could Psychophysiology Be Associated with Political Discussion Network Homogeneity?},
+  journal = {Political Psychology},
+  publisher = {Wiley Online Library},
+  year = {forthcoming}
+}
+</pre></td>
+</tr>
+<tr id="kam2019boycotting" class="entry">
+	<td>Kam, C.D. and Deichert, M.</td>
+	<td>Boycotting, Buycotting, and the Psychology of Political Consumerism <p class="infolinks">[<a href="javascript:toggleInfo('kam2019boycotting','bibtex')">BibTeX</a>]</p></td>
+	<td>forthcoming</td>
+	<td>The Journal of Politics&nbsp;</td>
+	<td>article</td>
+	<td><a href="https://doi.org/10.1086/705922">DOI</a> &nbsp;</td>
+</tr>
+<tr id="bib_kam2019boycotting" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{kam2019boycotting,
+  author = {Kam, Cindy D. and Deichert, Maggie},
+  title = {Boycotting, Buycotting, and the Psychology of Political Consumerism},
+  journal = {The Journal of Politics},
+  year = {forthcoming},
+  doi = {https://doi.org/10.1086/705922}
+}
+</pre></td>
+</tr>
+<tr id="krupnikov2019citizen" class="entry">
+	<td>Krupnikov, Y. and Levine, A.S.</td>
+	<td>Citizen Engagement (and Disengagement) in Response to Social Ills <p class="infolinks">[<a href="javascript:toggleInfo('krupnikov2019citizen','bibtex')">BibTeX</a>]</p></td>
+	<td>forthcoming</td>
+	<td>Journal of Politics&nbsp;</td>
+	<td>article</td>
+	<td>&nbsp;</td>
+</tr>
+<tr id="bib_krupnikov2019citizen" class="bibtex noshow">
+<td colspan="6"><b>BibTeX</b>:
+<pre>
+@article{krupnikov2019citizen,
+  author = {Krupnikov, Yanna and Levine, Adam Seth},
+  title = {Citizen Engagement (and Disengagement) in Response to Social Ills},
+  journal = {Journal of Politics},
+  year = {forthcoming}
+}
+</pre></td>
+</tr>
+</tbody>
+</table>
+<footer>
+ <small>Created by <a href="http://jabref.sourceforge.net">JabRef</a> on 28/08/2019.</small>
+</footer>
+<!-- file generated by JabRef -->
+</body>
+</html>
