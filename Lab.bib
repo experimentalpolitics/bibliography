@@ -2559,6 +2559,68 @@ comment:
   groups        = {475 - New PolPsych, Misinformation},
 }
 
+@Article{benedictis2019persuading,
+  author        = {De Benedictis-Kessner, Justin and Baum, Matthew A and Berinsky, Adam J and Yamamoto, Teppei},
+  title         = {Persuading the Enemy: Estimating the Persuasive Effects of Partisan Media with the Preference-Incorporating Choice and Assignment Design},
+  journal       = {American Political Science Review},
+  year          = {forthcoming},
+  pages         = {1--15},
+  __markedentry = {[patrick:5]},
+  comment       = {overview:
+- question: is polarization a cause of media fragmentation or rather an effect fo media fragmentation? Causal direction is not completely clear in the literature
+- major issue in past research: unable to disentangle the effect of selective exposure and actual persuasion
+- Preference-Incorporating Choice and Assignment (PICA) design, includes free choice and forced exposure of partisan media sources (Fox News, MSNBC, entertainment)
+- design allows authors to estimate the degree of polarization caused by selective exposure and the persuasive effect of partisan media, as well as sensitivityanalyses accounting for discrepancies between stated preferences and actual choice
+- exposire to more partisan news can sway opinions of even those respondents who are already exposed to some degree of partisan news, but they are most effective among respondents who usually prefer entertainment rather than partisan news
+- "We ﬁnd that partisan media can polarize both its regular consumers and inadvertent audiences who would otherwise not consume it, but ideologically opposing media potentially also can ameliorate the existing polarization between consumers."
+-> polarization is not simply a function of selective exposure, persuasion effects play an important role as well
+
+comments/questions:
+- interesting and useful article that can serve as a template for future persuasion/exposure studies
+- design is almost the same as in our lab project implementing a randomized exposure + endogenous exposure design, but we keep the actual content of the news article constant, which could be an interesting extension
+- one of their outcome measures is intention to share the news article, this could also be useful for the lab project},
+  file          = {:pdfs/benedictis2019persuading.pdf:PDF},
+  groups        = {Media Exposure},
+  publisher     = {Cambridge University Press},
+}
+
+@Article{knox2019design,
+  author        = {Knox, Dean and Yamamoto, Teppei and Baum, Matthew A and Berinsky, Adam J},
+  title         = {Design, identification, and sensitivity analysis for patient preference trials},
+  journal       = {Journal of the American Statistical Association},
+  year          = {2019},
+  pages         = {1--27},
+  __markedentry = {[patrick:1]},
+  comment       = {overview:
+- proposes a general design for patient preference trials (PPTs) that involves a combination of forced exposure and free choice condition for media exposure experiments
+- motivation: "If a treatment has different effects on those who would choose to take it and those who would not, the average treatment effect estimated in a standard randomized controlled trial (RCT) may give a misleading picture of its impact outside of the study sample."
+- key causal quantity: ACTE: average choice-specific treatment effect, represents the conditional average treatment effect for the sub-population of subjects who would choose a particular treatment option
+- ACTE is identified under (1) randomization of designs, (2) randomization of the forced treatment, and (3) mean ignorability of measurement error (i.e., the discrepancy between stated and revealed preferences is ignorable / not correlated with background characteristics that are associated with potential outcomes
+- Assumption 3 is key (and strong in certain contexts), the framework allows for sensitivity analysis of its violation
+
+questions/comments:
+- no-design-effect assumption is important, our lab project essentially argues that a nominally identical treatment has different effects on the outcome for the same unit depending on whether the treatment was randomly assigned in the forced exposure condition or voluntary chosen in the free-choice condition -> Essentially we are arguing that this key assumption is violated, which would be an interesting methodological contribution.},
+  file          = {:pdfs/knox2019design.pdf:PDF},
+  groups        = {Media Exposure},
+  publisher     = {Taylor \& Francis},
+}
+
+@Article{kennedy2018shape,
+  author  = {Kennedy, Ryan and Clifford, Scott and Burleigh, Tyler and Waggoner, Philip and Jewell, Ryan},
+  title   = {The shape of and solutions to the MTurk quality crisis},
+  journal = {Available at SSRN},
+  year    = {2018},
+}
+
+@Article{aronow2018note,
+  author    = {Aronow, Peter M and Baron, Jonathon and Pinson, Lauren},
+  title     = {A note on dropping experimental subjects who fail a manipulation check},
+  journal   = {Political Analysis},
+  year      = {2018},
+  pages     = {1--18},
+  publisher = {Cambridge University Press},
+}
+
 @Comment{jabref-meta: databaseType:bibtex;}
 
 @Comment{jabref-meta: grouping:
