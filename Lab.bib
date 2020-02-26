@@ -483,6 +483,23 @@ comments/questions:
   volume    = {63},
   number    = {1},
   pages     = {181--196},
+  comment   = {Overview:
+- Puzzle: why do priorities for combating public risks seem uncorrelated with the dangers those risks objectively present?
+- "Americans' risk priorities primarily reflect judgments about the extent to which some victims deserve more protection than others and the degree to which it is appropriate for government to intervene in different areas of social life"
+-> "key to understanding Americans' divergent reactions to risk lies more with their values than with their grasp of factual information."
+
+Method:
+- Survey asking respondents to complete 15 pairwise comparisons between public risks on multiple dimensions (priority, harm, mortality, fairness, responsibility, disaster potential, long-term growth, worry)
+- analysis based on aggregation of individual paired comparisons.
+
+Findings:
+- Respondents are well informed about (relatve) magnitude of risks, but those perceptions explained relatively little variation in policy preferences
+- Instead, what matters is the relative status of the victim and the appropriate role of government
+-> we need to distinguish between factual beliefs and policy preferences, key to productive discourse likely lies in understanding voters' values rather than contesting their factual beliefs. 
+
+Comments/Questions:
+- Main priority measure seems problematic: More money than currently or more money than the other risk? The baseline is unclear!
+- Accurate relative risk perception does not necessarily imply accurate *absolute* risk perception...},
   file      = {:pdfs/friedman2019priorities.pdf:PDF},
   groups    = {Risk},
   publisher = {Wiley Online Library},
@@ -2783,64 +2800,6 @@ main findings:
   groups      = {Immigration},
 }
 
-@Article{friedman2019priorities,
-  author    = {Friedman, Jeffrey A},
-  title     = {Priorities for Preventive Action: Explaining Americans’ Divergent Reactions to 100 Public Risks},
-  journal   = {American Journal of Political Science},
-  year      = {2019},
-  volume    = {63},
-  number    = {1},
-  pages     = {181--196},
-  comment   = {Overview:
-- Puzzle: why do priorities for combating public risks seem uncorrelated with the dangers those risks objectively present?
-- "Americans' risk priorities primarily reflect judgments about the extent to which some victims deserve more protection than others and the degree to which it is appropriate for government to intervene in different areas of social life"
--> "key to understanding Americans' divergent reactions to risk lies more with their values than with their grasp of factual information."
-
-Method:
-- Survey asking respondents to complete 15 pairwise comparisons between public risks on multiple dimensions (priority, harm, mortality, fairness, responsibility, disaster potential, long-term growth, worry)
-- analysis based on aggregation of individual paired comparisons.
-
-Findings:
-- Respondents are well informed about (relatve) magnitude of risks, but those perceptions explained relatively little variation in policy preferences
-- Instead, what matters is the relative status of the victim and the appropriate role of government
--> we need to distinguish between factual beliefs and policy preferences, key to productive discourse likely lies in understanding voters' values rather than contesting their factual beliefs. 
-
-Comments/Questions:
-- Main priority measure seems problematic: More money than currently or more money than the other risk? The baseline is unclear!
-- Accurate relative risk perception does not necessarily imply accurate *absolute* risk perception...},
-  file      = {:pdfs/friedman2019priorities.pdf:PDF},
-  groups    = {Risk Perception, Immigration},
-  publisher = {Wiley Online Library},
-}
-
-@Article{hangartner2018does,
-  author    = {Hangartner, Dominik and Dinas, Elias and Marbach, Moritz and Matakos, Konstantinos and Xefteris, Dimitrios},
-  title     = {Does Exposure to the Refugee Crisis Make Natives More Hostile?},
-  journal   = {American Political Science Review},
-  year      = {2018},
-  volume    = {forthcoming},
-  pages     = {1--14},
-  comment   = {Overview:
-- natural experiment + survey on Greek islands affected by influx of refugees from Turkey -> distance from Turkey as instrument for refugee exposure
-- "direct exposure to refugee arrivals insuces increases in natives' hostility toward refugees, immigrants, and Muslim minorities; support for restrictive asylum and immigration policies; and political engagement to effect such exclusionary policies"
-- "since refugees only passed through these islands, our findings challenge both standard economic and cultural explanations of anti-immigrant sentiment and show that mere exposure suffices in generating lasting increases in hostility"
-
-Method:
-- Natural experiment comparing Greek islands that were exposed to refugees vs. islands that were not; distance to Turkish coast was used as an instrument to solve endogeneity issues
-- identical survey (N ca. 2000) conducted on multiple islands asking for attitudes, policy preferences and political engagement (multiple items for certain categories combined via PCA), conducted well after refugees left
-- 2SLS + various robustness and placebo tests, the analyses seem pretty solid
-- potential mechanisms: natives affected by tourism (no) effects determined by predisposition (no, they're pretty uniform)  
-
-Comments:
-- in their argument, endogeneity is based on the refugees' decision where to land (i.e., in more "friendly" territory), which does not seem like the only source of endogeneity
-- I'm not sure if I buy their argument that the findings challenge economic and cultural explanations. The authors suggest a clear distinction b/w these previous theories and the threat from passing refugees, which I find less clear than they suggest
-- are there other factors related to distance & refugee attitudes which might confound the relationship? I thought so, but the placebo tests (comparing pre-exposure islands) suggest otherwise
-- literature review might be useful, e.g., when they discuss how contact b/w ingroups and outgroups can reduce prejudice if both share equal status and common goals, find themselves in a cooperative rather than competitive environment, and operate under a well-defined set of norms or regulations. Also arguments regarding the role of knowledge, perspective-taking, etc. -> proximity does not necessarily lead to contact!},
-  file      = {:pdfs/hangartner2018does.pdf:PDF},
-  groups    = {Immigration},
-  publisher = {Cambridge University Press},
-}
-
 @Article{kalla2020reducing,
   author  = {Kalla, Joshua and Broockman, David},
   title   = {Reducing exclusionary attitudes through interpersonal conversation: evidence from three field experiments},
@@ -2884,27 +2843,6 @@ Limitations:
   file      = {:pdfs/valentino2013immigration.pdf:PDF},
   groups    = {Immigration},
   publisher = {Wiley Online Library},
-}
-
-@Article{knox2019design,
-  author        = {Knox, Dean and Yamamoto, Teppei and Baum, Matthew A and Berinsky, Adam J},
-  title         = {Design, identification, and sensitivity analysis for patient preference trials},
-  journal       = {Journal of the American Statistical Association},
-  year          = {2019},
-  pages         = {1--27},
-  __markedentry = {[patrick:1]},
-  comment       = {overview:
-- proposes a general design for patient preference trials (PPTs) that involves a combination of forced exposure and free choice condition for media exposure experiments
-- motivation: "If a treatment has different effects on those who would choose to take it and those who would not, the average treatment effect estimated in a standard randomized controlled trial (RCT) may give a misleading picture of its impact outside of the study sample."
-- key causal quantity: ACTE: average choice-specific treatment effect, represents the conditional average treatment effect for the sub-population of subjects who would choose a particular treatment option
-- ACTE is identified under (1) randomization of designs, (2) randomization of the forced treatment, and (3) mean ignorability of measurement error (i.e., the discrepancy between stated and revealed preferences is ignorable / not correlated with background characteristics that are associated with potential outcomes
-- Assumption 3 is key (and strong in certain contexts), the framework allows for sensitivity analysis of its violation
-
-questions/comments:
-- no-design-effect assumption is important, our lab project essentially argues that a nominally identical treatment has different effects on the outcome for the same unit depending on whether the treatment was randomly assigned in the forced exposure condition or voluntary chosen in the free-choice condition -> Essentially we are arguing that this key assumption is violated, which would be an interesting methodological contribution.},
-  file          = {:pdfs/knox2019design.pdf:PDF},
-  groups        = {Media Exposure, Methods},
-  publisher     = {Taylor \& Francis},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}
