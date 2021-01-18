@@ -3008,6 +3008,72 @@ comments/questions:
   publisher = {The Royal Society Publishing},
 }
 
+@InCollection{bowers2011making,
+  author    = {Bowers, Jake},
+  booktitle = {Cambridge Handbook of Experimental Political Science},
+  publisher = {Cambridge University Press},
+  title     = {Making Effects Manifest in Randomized Experiments},
+  year      = {2011},
+  comment   = {overview:
+- discusses the inclusion of pre-treatment covariates to achieve more precise estimates in randomized experiments
+
+comments:
+- pdf available through reference for entire book},
+  groups    = {Experiments, Methods},
+  keywords  = {prio1},
+  priority  = {prio1},
+}
+
+@Misc{clifford2020increasing,
+  author   = {Clifford, Scott and Sheagley, Geoffrey and Piston, Spencer},
+  note     = {Working Paper},
+  title    = {Increasing Precision in Survey Experiments Without Introducing Bias},
+  year     = {2020},
+  comment  = {overview:
+- most common design is the between-subjects design in which outcome is only measured post-treatment -> low precision, requires large sample sizes
+- alternative designs that involve repeated mesurement of the DV promise greater precision but are rarely used out of fears that the design may bias treatment effects
+- this paper shows results form 6 experiments manipulatign designs and shos that repeated measures designs substantially increase precision while introducing little to no bias
+- within-subject designs also offer new insights into heterogeneous treatment effects
+- interesting finding: most respondents forget their previous response and believe that their opinions did not change in pretest posttest even if they did
+- only caveat: within-subject designs are limited to cases in which the effect of the independent variable can be removed
+-> "Given the clear gains in precision and weak evidence for bias, we recommend that
+researchers use prepost and within-subjects designs whenever possible."
+
+experimental designs considered in the studies:
+- posttest -> standard design
+- prepost -> standard design + pre-treatment measure (same item)
+- quasi-prepost -> standard design + pre-treatment measure (slightly altered item)
+- within -> prepost + treatment before first measurement in control (i.e., every group recieves treatment, only ordering of treatments and measurements is varied)
+
+potential sources for bias in repeated measures designs:
+- demand effects -> little empirical evidence
+- consistency pressures -> limited by subject's memory
+- interaction between testing and the treatment -> little evidence?
+
+comments / questions:
+- paper also includes some useful discussion regarding the inclusion of covariates to increase precision (which it does, but the benefits are smaller than repeated measurement designs)
+-> "While our quasi controls varied in their effectiveness across studies, overall the results suggest that carefully selected controls can substantially increase statistical power relative to standard controls for partisanship and ideology."},
+  file     = {:pdfs/clifford2020increasing.pdf:PDF},
+  groups   = {Survey Design, Experiments, Methods},
+  keywords = {prio1},
+  priority = {prio1},
+}
+
+@Article{gelman2006difference,
+  author    = {Gelman, Andrew and Stern, Hal},
+  journal   = {The American Statistician},
+  title     = {The Difference Between “Significant” and “Not Significant” is Not Itself Statistically Significant},
+  year      = {2006},
+  number    = {4},
+  pages     = {328--331},
+  volume    = {60},
+  file      = {gelman2006difference.pdf:pdfs/gelman2006difference.pdf:PDF},
+  groups    = {Basics / Misc, Methods},
+  owner     = {patrick},
+  publisher = {Taylor \& Francis},
+  timestamp = {2016.11.10},
+}
+
 @Comment{jabref-meta: databaseType:bibtex;}
 
 @Comment{jabref-meta: grouping:
