@@ -2130,6 +2130,7 @@
   title   = {The shape of and solutions to the MTurk quality crisis},
   year    = {2018},
   comment = {M-Turk has had a decline in data quality. This article provides three solutions: software to identify fraud in existing datasets, an easy-to-use web application based on this software, and a method for blocking fraudulent respondents in Qualtrics surveys. We demonstrate the effectiveness of the screening procedure in a third study. Our results suggest that these fraudulent respondents provide unusually low-quality data, but can be easily identified and screened out. An example of how we combat this in our study is that we use VPN in our study to make sure respondents are in the United States.},
+  groups  = {Methods},
 }
 
 @Article{aronow2019note,
@@ -2207,16 +2208,18 @@
 	Title = {Immigration and redistribution},
 	Year = {2019}}
 
-@article{kalla2020reducing,
-	Author = {Kalla, Joshua and Broockman, David},
-	Comment = {overview: - non-judgmental exchange of narratives reduces exclusionary attitudes (towards unauthorized immigrants and transgender people), effects last for 3-5 months - 3 field experiments, contact registered voters for seemingly unrelated survey, then randomize canvassing strategies, then field second survey - 1st experiment focuses on attitudes towards unauthorized immigrants using direct narratives, - 2nd experiment uses narratives on video - 3rd experiment uses phone calls -> all 3 are effective, illustrates the importance of narratives in persuasion comments: - great paper, interesting experimental results, good background readings on effective persuasion through narratives},
-	File = {:pdfs/kalla2020reducing.pdf:PDF},
-	Groups = {Immigration},
-	Journal = {American Political Science Review},
-	Pages = {1--16},
-	Title = {Reducing exclusionary attitudes through interpersonal conversation: evidence from three field experiments},
-	Volume = {forthcoming},
-	Year = {2020}}
+@Article{kalla2020reducing,
+  author  = {Kalla, Joshua and Broockman, David},
+  journal = {American Political Science Review},
+  title   = {Reducing exclusionary attitudes through interpersonal conversation: evidence from three field experiments},
+  year    = {2020},
+  number  = {2},
+  pages   = {410--425},
+  volume  = {114},
+  comment = {overview: - non-judgmental exchange of narratives reduces exclusionary attitudes (towards unauthorized immigrants and transgender people), effects last for 3-5 months - 3 field experiments, contact registered voters for seemingly unrelated survey, then randomize canvassing strategies, then field second survey - 1st experiment focuses on attitudes towards unauthorized immigrants using direct narratives, - 2nd experiment uses narratives on video - 3rd experiment uses phone calls -> all 3 are effective, illustrates the importance of narratives in persuasion comments: - great paper, interesting experimental results, good background readings on effective persuasion through narratives},
+  file    = {:pdfs/kalla2020reducing.pdf:PDF},
+  groups  = {Immigration},
+}
 
 @article{valentino2013immigration,
 	Author = {Valentino, Nicholas A and Brader, Ted and Jardina, Ashley E},
@@ -2769,7 +2772,7 @@ questions/comments:
 
 @Book{stroud2011niche,
   author    = {Stroud, Natalie Jomini},
-  publisher = {Oxford University Press on Demand},
+  publisher = {Oxford University Press},
   title     = {Niche news: The politics of news choice},
   year      = {2011},
   file      = {:pdfs/stroud2011niche.pdf:PDF},
@@ -3280,15 +3283,85 @@ However, ambivalence should also lead people to avoid processing of counterattit
   publisher = {Sage Publications},
   timestamp = {2016.02.21},
 }
-@article{kennedy2020shape,
-  title={The shape of and solutions to the MTurk quality crisis},
-  author={Kennedy, Ryan and Clifford, Scott and Burleigh, Tyler and Waggoner, Philip D and Jewell, Ryan and Winter, Nicholas JG},
-  journal={Political Science Research and Methods},
-  volume={8},
-  number={4},
-  pages={614--629},
-  year={2020},
-  publisher={Cambridge University Press}
+
+@Article{kennedy2020shape,
+  author    = {Kennedy, Ryan and Clifford, Scott and Burleigh, Tyler and Waggoner, Philip D and Jewell, Ryan and Winter, Nicholas JG},
+  journal   = {Political Science Research and Methods},
+  title     = {The shape of and solutions to the MTurk quality crisis},
+  year      = {2020},
+  number    = {4},
+  pages     = {614--629},
+  volume    = {8},
+  groups    = {Methods},
+  publisher = {Cambridge University Press},
+}
+
+@Article{berinsky2012evaluating,
+  author    = {Berinsky, Adam J and Huber, Gregory A and Lenz, Gabriel S},
+  journal   = {Political Analysis},
+  title     = {Evaluating online labor markets for experimental research: Amazon.com's Mechanical Turk},
+  year      = {2012},
+  number    = {3},
+  pages     = {351--368},
+  volume    = {20},
+  comment   = {overview
+- evaluate trade-offs in using Mechanical Turk for subject recruitment
+- investigate internal and external validity of MTurk experiments
+
+conclusion:
+- MTurk samples are often more representative of US population than in-person convenience samples, but less representative than other internet panels etc.
+- but: sample is younger and more liberal than general pop
+- MTurk samples replicate important experimental findings: responses to stimuli consistent with prior research, habitual response does not appear to be a problem
+- MTurk subjects pay more attention to task than other other respondents
+- but: as use increases, habitual responding might pose more of an external validity problem},
+  file      = {berinsky2012evaluating.pdf:pdfs/berinsky2012evaluating.pdf:PDF},
+  groups    = {Causal Inference, [patrick:], Methods},
+  keywords  = {Comparing Samples},
+  owner     = {patrick},
+  publisher = {SPM-PMSAPSA},
+  timestamp = {2018.05.29},
+}
+
+@Article{krupnikov2014cross,
+  author    = {Krupnikov, Yanna and Levine, Adam Seth},
+  journal   = {Journal of Experimental Political Science},
+  title     = {Cross-Sample Comparisons and External Validity},
+  year      = {2014},
+  number    = {01},
+  pages     = {59--80},
+  volume    = {1},
+  comment   = {overview:
+- four parallel experiments
+- comparison of student sample, diverse adult sample, and adult convenience sample
+- two aspects of narrowness that might suggest superiority of adult (convenience) samples and limit the generalizability of student samples: cognitive factors and heightened savviness
+
+findings:
+- noticeable difference b/w MTurk and the other samples (Student and YouGov)
+- when subjects were required to read an article or trust information from the experimenter, MTurk was problematic
+-> caution when using MTurk to produce generalizable results
+- effect sizes differed between studies
+- student sample and diverse national adult sample behave consistently and in line with theoretical predictions (once relevant moderators are taken into account)
+- this is not true for student convenience samples (!) -> MTurk may also not produce replicable results
+
+-> MTurkers as experienced survey takers},
+  file      = {krupnikov2014cross.pdf:pdfs/krupnikov2014cross.pdf:PDF},
+  groups    = {Causal Inference, Experiments, patrick:4, Methods},
+  keywords  = {Comparing Samples},
+  owner     = {patrick},
+  publisher = {Cambridge Univ Press},
+  timestamp = {2018.05.29},
+}
+
+@Article{huff2015these,
+  author    = {Huff, Connor and Tingley, Dustin},
+  journal   = {Research \& Politics},
+  title     = {“Who are these people?” Evaluating the demographic characteristics and political preferences of MTurk survey respondents},
+  year      = {2015},
+  number    = {3},
+  pages     = {2053168015604648},
+  volume    = {2},
+  groups    = {Methods},
+  publisher = {SAGE Publications Sage UK: London, England},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}
